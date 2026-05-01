@@ -29,8 +29,8 @@ public class Bill {
 
     private LocalDate deadline;
 
-    // pgvector: "[0.1, 0.2, ...]" 형식 문자열로 저장, 쿼리는 Native Query 사용
-    @Column(columnDefinition = "vector(1536)")
+    // pgvector: 배치 INSERT 시 제외, 추천 서비스에서 native query로만 업데이트
+    @Column(columnDefinition = "vector(1536)", insertable = false, updatable = false)
     private String embeddingVector;
 
     @Column(nullable = false)
