@@ -2,7 +2,7 @@ package com.dku.opensource.be.batch.step.processor;
 
 import com.dku.opensource.be.batch.step.dto.LegislationApiDto;
 import com.dku.opensource.be.domain.legislation.LegislationNotice;
-import org.springframework.batch.item.ItemProcessor;
+import org.springframework.batch.infrastructure.item.ItemProcessor;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDate;

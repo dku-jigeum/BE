@@ -2,7 +2,7 @@ package com.dku.opensource.be.batch.step.processor;
 
 import com.dku.opensource.be.batch.step.dto.PetitionApiDto;
 import com.dku.opensource.be.domain.petition.Petition;
-import org.springframework.batch.item.ItemProcessor;
+import org.springframework.batch.infrastructure.item.ItemProcessor;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDate;

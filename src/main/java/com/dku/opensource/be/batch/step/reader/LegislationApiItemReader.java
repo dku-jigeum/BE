@@ -4,9 +4,8 @@ import com.dku.opensource.be.batch.step.dto.LegislationApiDto;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.batch.core.configuration.annotation.StepScope;
-import org.springframework.batch.item.ItemReader;
+import org.springframework.batch.infrastructure.item.ItemReader;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 
@@ -54,11 +53,10 @@ public class LegislationApiItemReader implements ItemReader<LegislationApiDto> {
     @SuppressWarnings("unchecked")
     private void fetch() {
         try {
-            ResponseEntity<Map> response = restTemplate.getForEntity(
-                    API_URL, Map.class, apiKey, currentPage, pageSize);
+            String raw = restTemplate.getForObject(API_URL, String.class, apiKey, currentPage, pageSize);
+            if (raw == null) { exhausted = true; return; }
 
-            Map<String, Object> body = response.getBody();
-            if (body == null) { exhausted = true; return; }
+            Map<String, Object> body = objectMapper.readValue(raw, Map.class);
 
             Map<String, Object> result = (Map<String, Object>) body.get("result");
             if (result == null) { exhausted = true; return; }

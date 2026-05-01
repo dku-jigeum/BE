@@ -19,8 +19,8 @@ public class BillApiDto {
     @JsonProperty("BILL_NAME")
     private String billName;
 
-    @JsonProperty("DETAIL_LINK")
-    private String detailLink;
+    @JsonProperty("LINK_URL")
+    private String linkUrl;
 
     @JsonProperty("PROPOSE_DT")
     private String proposeDt;
@@ -28,9 +28,12 @@ public class BillApiDto {
     @JsonProperty("PROC_DT")
     private String procDt;
 
-    @JsonProperty("COMMITTEE_NM")
-    private String committeeNm;
+    @JsonProperty("CURR_COMMITTEE")
+    private String committee;
 
-    @JsonProperty("RST_MONA_NM")
+    @JsonProperty("RST_PROPOSER")
     private String proposer;
+
+    @JsonProperty("PASS_GUBUN")
+    private String passGubun;
 }

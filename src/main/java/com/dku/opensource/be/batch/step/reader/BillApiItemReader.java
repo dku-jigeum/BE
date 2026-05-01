@@ -4,9 +4,8 @@ import com.dku.opensource.be.batch.step.dto.BillApiDto;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.batch.core.configuration.annotation.StepScope;
-import org.springframework.batch.item.ItemReader;
+import org.springframework.batch.infrastructure.item.ItemReader;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 
@@ -20,9 +19,10 @@ import java.util.Map;
 @StepScope
 public class BillApiItemReader implements ItemReader<BillApiDto> {
 
+    // 22대 국회 의안 목록 API
     private static final String API_URL =
-            "https://open.assembly.go.kr/portal/openapi/BILLINFODETAIL" +
-            "?KEY={key}&Type=json&pIndex={page}&pSize={size}";
+            "https://open.assembly.go.kr/portal/openapi/TVBPMBILL11" +
+            "?KEY={key}&Type=json&pIndex={page}&pSize={size}&AGE=22";
 
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
@@ -54,17 +54,18 @@ public class BillApiItemReader implements ItemReader<BillApiDto> {
     @SuppressWarnings("unchecked")
     private void fetch() {
         try {
-            ResponseEntity<Map> response = restTemplate.getForEntity(
-                    API_URL, Map.class, apiKey, currentPage, pageSize);
+            // String으로 받아서 직접 파싱 — content-type 무관
+            String raw = restTemplate.getForObject(API_URL, String.class, apiKey, currentPage, pageSize);
+            if (raw == null) { exhausted = true; return; }
 
-            Map<String, Object> body = response.getBody();
-            if (body == null) { exhausted = true; return; }
+            Map<String, Object> body = objectMapper.readValue(raw, Map.class);
 
-            List<Map<String, Object>> wrapper =
-                    (List<Map<String, Object>>) body.get("BILLINFODETAIL");
+            // 응답 구조: {"TVBPMBILL11": [{"head": [...]}, {"row": [...]}]}
+            List<Object> wrapper = (List<Object>) body.get("TVBPMBILL11");
             if (wrapper == null || wrapper.size() < 2) { exhausted = true; return; }
 
-            List<Object> rows = (List<Object>) wrapper.get(1).get("row");
+            Map<String, Object> rowsMap = (Map<String, Object>) wrapper.get(1);
+            List<Object> rows = (List<Object>) rowsMap.get("row");
             if (rows == null || rows.isEmpty()) { exhausted = true; return; }
 
             for (Object row : rows) {
