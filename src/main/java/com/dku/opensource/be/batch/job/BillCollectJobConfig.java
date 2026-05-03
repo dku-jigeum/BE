@@ -1,9 +1,12 @@
 package com.dku.opensource.be.batch.job;
 
 import com.dku.opensource.be.batch.step.dto.BillApiDto;
+import com.dku.opensource.be.batch.step.dto.BillSummaryDto;
 import com.dku.opensource.be.batch.step.processor.BillItemProcessor;
 import com.dku.opensource.be.batch.step.reader.BillApiItemReader;
+import com.dku.opensource.be.batch.step.reader.BillSummaryItemReader;
 import com.dku.opensource.be.batch.step.writer.BillItemWriter;
+import com.dku.opensource.be.batch.step.writer.BillSummaryItemWriter;
 import com.dku.opensource.be.domain.bill.Bill;
 import lombok.RequiredArgsConstructor;
 import org.springframework.batch.core.job.Job;
@@ -23,9 +26,10 @@ public class BillCollectJobConfig {
     private final PlatformTransactionManager transactionManager;
 
     @Bean
-    public Job billCollectJob(Step billCollectStep) {
+    public Job billCollectJob(Step billCollectStep, Step billSummaryEnrichStep) {
         return new JobBuilder("billCollectJob", jobRepository)
                 .start(billCollectStep)
+                .next(billSummaryEnrichStep)
                 .build();
     }
 
@@ -37,6 +41,16 @@ public class BillCollectJobConfig {
                 .<BillApiDto, Bill>chunk(100, transactionManager)
                 .reader(reader)
                 .processor(processor)
+                .writer(writer)
+                .build();
+    }
+
+    @Bean
+    public Step billSummaryEnrichStep(BillSummaryItemReader reader,
+                                       BillSummaryItemWriter writer) {
+        return new StepBuilder("billSummaryEnrichStep", jobRepository)
+                .<BillSummaryDto, BillSummaryDto>chunk(10, transactionManager)
+                .reader(reader)
                 .writer(writer)
                 .build();
     }
