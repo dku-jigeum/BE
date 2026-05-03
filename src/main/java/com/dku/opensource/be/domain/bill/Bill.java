@@ -48,6 +48,10 @@ public class Bill {
         return bill;
     }
 
+    public void updateContent(String content) {
+        this.content = content;
+    }
+
     public void updateEmbedding(String embeddingVector) {
         this.embeddingVector = embeddingVector;
     }

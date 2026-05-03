@@ -27,3 +27,6 @@ spring:
       enabled: false
     jdbc:
       initialize-schema: always
+
+public-data:
+  content-enrich-limit: 200
