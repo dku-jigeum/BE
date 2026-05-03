@@ -19,10 +19,11 @@ import java.util.Map;
 @StepScope
 public class PetitionApiItemReader implements ItemReader<PetitionApiDto> {
 
-    // ERACO=%EC%A0%9C22%EB%8C%80 = 제22대 (URL encoded)
     private static final String API_URL =
             "https://open.assembly.go.kr/portal/openapi/PTTRCP" +
-            "?KEY={key}&Type=json&pIndex={page}&pSize={size}&ERACO=%EC%A0%9C22%EB%8C%80";
+            "?KEY={key}&Type=json&pIndex={page}&pSize={size}&ERACO={eraco}";
+
+    private static final String ERACO = "제22대";
 
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
@@ -54,7 +55,7 @@ public class PetitionApiItemReader implements ItemReader<PetitionApiDto> {
     @SuppressWarnings("unchecked")
     private void fetch() {
         try {
-            String raw = restTemplate.getForObject(API_URL, String.class, apiKey, currentPage, pageSize);
+            String raw = restTemplate.getForObject(API_URL, String.class, apiKey, currentPage, pageSize, ERACO);
             if (raw == null) { exhausted = true; return; }
 
             Map<String, Object> body = objectMapper.readValue(raw, Map.class);
