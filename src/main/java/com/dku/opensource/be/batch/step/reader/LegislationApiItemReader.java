@@ -20,8 +20,8 @@ import java.util.Map;
 public class LegislationApiItemReader implements ItemReader<LegislationApiDto> {
 
     private static final String API_URL =
-            "https://open.lawmaking.go.kr/ogc/api/lawMaking/getLawMakingList" +
-            "?serviceKey={key}&pageIndex={page}&pageSize={size}&type=JSON";
+            "https://open.assembly.go.kr/portal/openapi/nknalejkafmvgzmpt" +
+            "?KEY={key}&Type=json&pIndex={page}&pSize={size}";
 
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
@@ -58,14 +58,15 @@ public class LegislationApiItemReader implements ItemReader<LegislationApiDto> {
 
             Map<String, Object> body = objectMapper.readValue(raw, Map.class);
 
-            Map<String, Object> result = (Map<String, Object>) body.get("result");
-            if (result == null) { exhausted = true; return; }
+            List<Object> wrapper = (List<Object>) body.get("nknalejkafmvgzmpt");
+            if (wrapper == null || wrapper.size() < 2) { exhausted = true; return; }
 
-            List<Object> items = (List<Object>) result.get("list");
-            if (items == null || items.isEmpty()) { exhausted = true; return; }
+            Map<String, Object> rowsMap = (Map<String, Object>) wrapper.get(1);
+            List<Object> rows = (List<Object>) rowsMap.get("row");
+            if (rows == null || rows.isEmpty()) { exhausted = true; return; }
 
-            for (Object item : items) {
-                buffer.add(objectMapper.convertValue(item, LegislationApiDto.class));
+            for (Object row : rows) {
+                buffer.add(objectMapper.convertValue(row, LegislationApiDto.class));
             }
             currentPage++;
         } catch (Exception e) {

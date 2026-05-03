@@ -120,7 +120,7 @@ src/main/java/com/dku/opensource/be/
 | [KAN-6](https://dankook-opensource-project.atlassian.net/browse/KAN-6) | [BE] 프로젝트 초기 세팅 (Spring Boot, Gradle, Flyway, PostgreSQL) | ✅ 완료 |
 | [KAN-7](https://dankook-opensource-project.atlassian.net/browse/KAN-7) | [BE] 도메인 Entity 및 Repository 설계 (Bill, Petition, UserProfile) | ✅ 완료 |
 | [KAN-8](https://dankook-opensource-project.atlassian.net/browse/KAN-8) | [BE] 공공데이터 수집 Spring Batch 파이프라인 구현 (국회 법안) | ✅ 완료 |
-| [KAN-13](https://dankook-opensource-project.atlassian.net/browse/KAN-13) | [BE] 국민동의청원 수집 Spring Batch 파이프라인 구현 및 검증 | 해야 할 일 |
+| [KAN-13](https://dankook-opensource-project.atlassian.net/browse/KAN-13) | [BE] 국민동의청원 수집 Spring Batch 파이프라인 구현 및 검증 | ✅ 완료 |
 | [KAN-14](https://dankook-opensource-project.atlassian.net/browse/KAN-14) | [BE] 입법예고 수집 Spring Batch 파이프라인 구현 및 검증 | 해야 할 일 |
 | [KAN-9](https://dankook-opensource-project.atlassian.net/browse/KAN-9) | [BE] pgvector 기반 개인화 추천 로직 구현 (코사인 유사도 + 마감일 필터) | 해야 할 일 |
 | [KAN-10](https://dankook-opensource-project.atlassian.net/browse/KAN-10) | [BE] REST API 구현 (피드, 법안, 청원, 관심사 설정) | 해야 할 일 |

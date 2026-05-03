@@ -12,23 +12,23 @@ import java.time.format.DateTimeParseException;
 @Component
 public class LegislationItemProcessor implements ItemProcessor<LegislationApiDto, LegislationNotice> {
 
-    private static final DateTimeFormatter DATE_FORMATTER =
-            DateTimeFormatter.ofPattern("yyyyMMdd");
+    private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
 
     @Override
     public LegislationNotice process(LegislationApiDto dto) {
-        if (dto.getNoticeNo() == null || dto.getNoticeNo().isBlank()) return null;
+        if (dto.getBillId() == null || dto.getBillId().isBlank()) return null;
+        if (dto.getBillNo() == null || dto.getBillNo().isBlank()) return null;
 
-        String title = dto.getTitle() != null ? dto.getTitle().trim() : "";
-        LocalDate deadline = parseDate(dto.getEndDt());
+        String title = dto.getBillName() != null ? dto.getBillName().trim() : "";
+        LocalDate deadline = parseDate(dto.getNotiEdDt());
 
-        return LegislationNotice.of(dto.getNoticeNo().trim(), title, dto.getContent(), deadline);
+        return LegislationNotice.of(dto.getBillId().trim(), dto.getBillNo().trim(), title, deadline);
     }
 
     private LocalDate parseDate(String dateStr) {
         if (dateStr == null || dateStr.isBlank()) return null;
         try {
-            return LocalDate.parse(dateStr.trim().replace("-", ""), DATE_FORMATTER);
+            return LocalDate.parse(dateStr.trim(), DATE_FORMATTER);
         } catch (DateTimeParseException e) {
             return null;
         }

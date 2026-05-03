@@ -19,7 +19,7 @@ public class LegislationItemWriter implements ItemWriter<LegislationNotice> {
     public void write(Chunk<? extends LegislationNotice> chunk) {
         int saved = 0;
         for (LegislationNotice notice : chunk) {
-            if (!legislationNoticeRepository.existsByNoticeNo(notice.getNoticeNo())) {
+            if (!legislationNoticeRepository.existsByBillId(notice.getBillId())) {
                 legislationNoticeRepository.save(notice);
                 saved++;
             }

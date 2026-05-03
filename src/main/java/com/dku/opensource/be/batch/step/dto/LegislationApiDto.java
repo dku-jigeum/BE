@@ -10,15 +10,15 @@ import lombok.NoArgsConstructor;
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class LegislationApiDto {
 
-    @JsonProperty("NOTICE_NO")
-    private String noticeNo;
+    @JsonProperty("BILL_ID")
+    private String billId;
 
-    @JsonProperty("TITLE")
-    private String title;
+    @JsonProperty("BILL_NO")
+    private String billNo;
 
-    @JsonProperty("CONTENT")
-    private String content;
+    @JsonProperty("BILL_NAME")
+    private String billName;
 
-    @JsonProperty("END_DT")
-    private String endDt;
+    @JsonProperty("NOTI_ED_DT")
+    private String notiEdDt;
 }

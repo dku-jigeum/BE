@@ -18,26 +18,25 @@ public class LegislationNotice {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(unique = true, nullable = false, length = 50)
-    private String noticeNo;
+    @Column(unique = true, nullable = false, length = 100)
+    private String billId;
+
+    @Column(nullable = false, length = 50)
+    private String billNo;
 
     @Column(nullable = false, length = 500)
     private String title;
-
-    @Column(columnDefinition = "TEXT")
-    private String content;
 
     private LocalDate deadline;
 
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
 
-    public static LegislationNotice of(String noticeNo, String title,
-                                        String content, LocalDate deadline) {
+    public static LegislationNotice of(String billId, String billNo, String title, LocalDate deadline) {
         LegislationNotice notice = new LegislationNotice();
-        notice.noticeNo = noticeNo;
+        notice.billId = billId;
+        notice.billNo = billNo;
         notice.title = title;
-        notice.content = content;
         notice.deadline = deadline;
         return notice;
     }
