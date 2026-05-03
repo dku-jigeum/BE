@@ -20,8 +20,10 @@ import java.util.Map;
 public class PetitionApiItemReader implements ItemReader<PetitionApiDto> {
 
     private static final String API_URL =
-            "https://petitions.assembly.go.kr/api/petitions" +
-            "?serviceKey={key}&pageNo={page}&numOfRows={size}&status=ACTIVE";
+            "https://open.assembly.go.kr/portal/openapi/PTTRCP" +
+            "?KEY={key}&Type=json&pIndex={page}&pSize={size}&ERACO={eraco}";
+
+    private static final String ERACO = "제22대";
 
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
@@ -53,16 +55,20 @@ public class PetitionApiItemReader implements ItemReader<PetitionApiDto> {
     @SuppressWarnings("unchecked")
     private void fetch() {
         try {
-            String raw = restTemplate.getForObject(API_URL, String.class, apiKey, currentPage, pageSize);
+            String raw = restTemplate.getForObject(API_URL, String.class, apiKey, currentPage, pageSize, ERACO);
             if (raw == null) { exhausted = true; return; }
 
             Map<String, Object> body = objectMapper.readValue(raw, Map.class);
 
-            List<Object> items = (List<Object>) body.get("items");
-            if (items == null || items.isEmpty()) { exhausted = true; return; }
+            List<Object> wrapper = (List<Object>) body.get("PTTRCP");
+            if (wrapper == null || wrapper.size() < 2) { exhausted = true; return; }
 
-            for (Object item : items) {
-                buffer.add(objectMapper.convertValue(item, PetitionApiDto.class));
+            Map<String, Object> rowsMap = (Map<String, Object>) wrapper.get(1);
+            List<Object> rows = (List<Object>) rowsMap.get("row");
+            if (rows == null || rows.isEmpty()) { exhausted = true; return; }
+
+            for (Object row : rows) {
+                buffer.add(objectMapper.convertValue(row, PetitionApiDto.class));
             }
             currentPage++;
         } catch (Exception e) {

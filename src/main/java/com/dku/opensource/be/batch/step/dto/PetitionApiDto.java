@@ -10,18 +10,13 @@ import lombok.NoArgsConstructor;
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class PetitionApiDto {
 
-    @JsonProperty("id")
+    @JsonProperty("PTT_NO")
     private String petitionNo;
 
-    @JsonProperty("title")
+    @JsonProperty("PTT_NM")
     private String title;
 
-    @JsonProperty("content")
-    private String content;
-
-    @JsonProperty("expireAt")
-    private String expireAt;
-
-    @JsonProperty("agreeCount")
-    private int agreeCount;
+    // CITZN_AGM_CNT는 "51,449" 형태 문자열, 의원소개 청원은 null
+    @JsonProperty("CITZN_AGM_CNT")
+    private String citizenAgreementCount;
 }

@@ -5,9 +5,6 @@ import com.dku.opensource.be.domain.petition.Petition;
 import org.springframework.batch.infrastructure.item.ItemProcessor;
 import org.springframework.stereotype.Component;
 
-import java.time.LocalDate;
-import java.time.format.DateTimeParseException;
-
 @Component
 public class PetitionItemProcessor implements ItemProcessor<PetitionApiDto, Petition> {
 
@@ -15,19 +12,19 @@ public class PetitionItemProcessor implements ItemProcessor<PetitionApiDto, Peti
     public Petition process(PetitionApiDto dto) {
         if (dto.getPetitionNo() == null || dto.getPetitionNo().isBlank()) return null;
 
-        LocalDate deadline = parseDate(dto.getExpireAt());
         String title = dto.getTitle() != null ? dto.getTitle().trim() : "";
+        int participantCount = parseCount(dto.getCitizenAgreementCount());
 
-        return Petition.of(dto.getPetitionNo().trim(), title,
-                dto.getContent(), deadline, dto.getAgreeCount());
+        // PTTRCP API에는 마감일(deadline) 필드 없음 — null로 저장
+        return Petition.of(dto.getPetitionNo().trim(), title, null, null, participantCount);
     }
 
-    private LocalDate parseDate(String dateStr) {
-        if (dateStr == null || dateStr.isBlank()) return null;
+    private int parseCount(String countStr) {
+        if (countStr == null || countStr.isBlank()) return 0;
         try {
-            return LocalDate.parse(dateStr.substring(0, 10));
-        } catch (DateTimeParseException | StringIndexOutOfBoundsException e) {
-            return null;
+            return Integer.parseInt(countStr.replace(",", ""));
+        } catch (NumberFormatException e) {
+            return 0;
         }
     }
 }
