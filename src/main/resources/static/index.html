@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>지금참여 — 수집 현황</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0f1117; color: #e2e8f0; min-height: 100vh; }
+  header { background: #1a1d27; border-bottom: 1px solid #2d3148; padding: 20px 32px; display: flex; align-items: center; gap: 16px; }
+  header h1 { font-size: 20px; font-weight: 700; color: #fff; }
+  header span { font-size: 13px; color: #64748b; }
+  .stats { display: flex; gap: 16px; padding: 20px 32px; flex-wrap: wrap; }
+  .stat-card { background: #1a1d27; border: 1px solid #2d3148; border-radius: 10px; padding: 16px 24px; flex: 1; min-width: 160px; }
+  .stat-card .label { font-size: 12px; color: #64748b; margin-bottom: 6px; }
+  .stat-card .value { font-size: 28px; font-weight: 700; color: #818cf8; }
+  .stat-card .sub { font-size: 11px; color: #475569; margin-top: 4px; }
+  .tabs { display: flex; gap: 0; padding: 0 32px; border-bottom: 1px solid #2d3148; margin-top: 8px; }
+  .tab { padding: 12px 24px; font-size: 14px; font-weight: 500; cursor: pointer; color: #64748b; border-bottom: 2px solid transparent; margin-bottom: -1px; transition: all 0.15s; }
+  .tab:hover { color: #a5b4fc; }
+  .tab.active { color: #818cf8; border-bottom-color: #818cf8; }
+  .content { padding: 24px 32px; }
+  .table-wrap { overflow-x: auto; border-radius: 10px; border: 1px solid #2d3148; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { background: #1e2130; color: #94a3b8; font-weight: 500; padding: 11px 16px; text-align: left; border-bottom: 1px solid #2d3148; white-space: nowrap; }
+  td { padding: 11px 16px; border-bottom: 1px solid #1e2130; vertical-align: middle; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: #1a1d2a; }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; }
+  .badge-yes { background: #1e3a29; color: #4ade80; }
+  .badge-no { background: #2d1f1f; color: #f87171; }
+  .badge-blue { background: #1e2a3a; color: #60a5fa; }
+  .title-cell { max-width: 420px; }
+  .title-cell .main { color: #e2e8f0; line-height: 1.4; }
+  .title-cell .sub { color: #475569; font-size: 11px; margin-top: 2px; }
+  .pagination { display: flex; align-items: center; gap: 8px; margin-top: 20px; justify-content: center; }
+  .btn { padding: 7px 16px; border-radius: 6px; border: 1px solid #2d3148; background: #1a1d27; color: #94a3b8; cursor: pointer; font-size: 13px; transition: all 0.15s; }
+  .btn:hover:not(:disabled) { border-color: #818cf8; color: #818cf8; }
+  .btn:disabled { opacity: 0.35; cursor: default; }
+  .page-info { font-size: 13px; color: #64748b; }
+  .loading { text-align: center; padding: 60px; color: #475569; }
+  .num { color: #94a3b8; font-variant-numeric: tabular-nums; }
+  .cnt { font-weight: 600; color: #c084fc; }
+  .deadline { color: #fb923c; font-size: 12px; }
+  .deadline.soon { color: #f87171; font-weight: 600; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🗳 지금참여</h1>
+  <span>공공데이터 배치 수집 현황</span>
+</header>
+
+<div class="stats" id="stats">
+  <div class="stat-card"><div class="label">법안</div><div class="value" id="s-bills">—</div><div class="sub" id="s-bills-sub"></div></div>
+  <div class="stat-card"><div class="label">청원</div><div class="value" id="s-petitions">—</div><div class="sub">국민동의청원</div></div>
+  <div class="stat-card"><div class="label">입법예고</div><div class="value" id="s-legislation">—</div><div class="sub">현재 예고 진행 중</div></div>
+</div>
+
+<div class="tabs">
+  <div class="tab active" onclick="switchTab('bills')">법안</div>
+  <div class="tab" onclick="switchTab('petitions')">청원</div>
+  <div class="tab" onclick="switchTab('legislation')">입법예고</div>
+</div>
+
+<div class="content">
+  <div id="table-area"><div class="loading">불러오는 중...</div></div>
+  <div class="pagination" id="pagination"></div>
+</div>
+
+<script>
+const state = { tab: 'bills', page: 0, total: 0, totalPages: 0 };
+
+async function api(path) {
+  const r = await fetch(path);
+  const j = await r.json();
+  return j.data;
+}
+
+async function loadStats() {
+  const d = await api('/temp/stats');
+  document.getElementById('s-bills').textContent = d.bills.toLocaleString();
+  document.getElementById('s-bills-sub').textContent = `요약 수집: ${d.billsWithContent.toLocaleString()}건`;
+  document.getElementById('s-petitions').textContent = d.petitions.toLocaleString();
+  document.getElementById('s-legislation').textContent = d.legislation.toLocaleString();
+}
+
+function daysUntil(dateStr) {
+  if (!dateStr) return null;
+  const diff = Math.ceil((new Date(dateStr) - new Date()) / 86400000);
+  return diff;
+}
+
+function deadlineTag(dateStr) {
+  if (!dateStr) return '<span style="color:#475569">-</span>';
+  const d = daysUntil(dateStr);
+  const cls = d <= 3 ? 'deadline soon' : 'deadline';
+  const label = d < 0 ? '마감' : d === 0 ? 'D-Day' : `D-${d}`;
+  return `<span class="${cls}">${dateStr} <b>${label}</b></span>`;
+}
+
+async function loadBills(page) {
+  const d = await api(`/temp/bills?page=${page}&size=20`);
+  state.total = d.totalElements; state.totalPages = d.totalPages;
+  const rows = d.content.map(b => `
+    <tr>
+      <td class="num" style="color:#475569">${b.billNo}</td>
+      <td class="title-cell"><div class="main">${b.title}</div></td>
+      <td>${b.hasContent ? '<span class="badge badge-yes">수집됨</span>' : '<span class="badge badge-no">미수집</span>'}</td>
+      <td>${deadlineTag(b.deadline)}</td>
+      <td class="num">${b.viewCount}</td>
+    </tr>`).join('');
+  document.getElementById('table-area').innerHTML = `
+    <div class="table-wrap"><table>
+      <thead><tr><th>의안번호</th><th>법안명</th><th>요약본</th><th>마감일</th><th>조회수</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table></div>`;
+}
+
+async function loadPetitions(page) {
+  const d = await api(`/temp/petitions?page=${page}&size=20`);
+  state.total = d.totalElements; state.totalPages = d.totalPages;
+  const rows = d.content.map(p => `
+    <tr>
+      <td class="num" style="color:#475569">${p.petitionNo}</td>
+      <td class="title-cell"><div class="main">${p.title}</div></td>
+      <td class="cnt">${p.participantCount.toLocaleString()}명</td>
+      <td>${deadlineTag(p.deadline)}</td>
+    </tr>`).join('');
+  document.getElementById('table-area').innerHTML = `
+    <div class="table-wrap"><table>
+      <thead><tr><th>청원번호</th><th>청원명</th><th>동의인원</th><th>마감일</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table></div>`;
+}
+
+async function loadLegislation(page) {
+  const d = await api(`/temp/legislation?page=${page}&size=20`);
+  state.total = d.totalElements; state.totalPages = d.totalPages;
+  const rows = d.content.map(l => `
+    <tr>
+      <td class="num" style="color:#475569">${l.billNo}</td>
+      <td class="title-cell"><div class="main">${l.title}</div></td>
+      <td>${deadlineTag(l.deadline)}</td>
+    </tr>`).join('');
+  document.getElementById('table-area').innerHTML = `
+    <div class="table-wrap"><table>
+      <thead><tr><th>의안번호</th><th>법안명</th><th>예고 마감일</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table></div>`;
+}
+
+async function load(page = 0) {
+  state.page = page;
+  document.getElementById('table-area').innerHTML = '<div class="loading">불러오는 중...</div>';
+  if (state.tab === 'bills') await loadBills(page);
+  else if (state.tab === 'petitions') await loadPetitions(page);
+  else await loadLegislation(page);
+  renderPagination();
+}
+
+function renderPagination() {
+  const p = document.getElementById('pagination');
+  p.innerHTML = `
+    <button class="btn" onclick="load(${state.page - 1})" ${state.page === 0 ? 'disabled' : ''}>← 이전</button>
+    <span class="page-info">${state.page + 1} / ${state.totalPages} 페이지 (총 ${state.total.toLocaleString()}건)</span>
+    <button class="btn" onclick="load(${state.page + 1})" ${state.page >= state.totalPages - 1 ? 'disabled' : ''}>다음 →</button>`;
+}
+
+function switchTab(tab) {
+  state.tab = tab;
+  document.querySelectorAll('.tab').forEach((el, i) => {
+    el.classList.toggle('active', ['bills','petitions','legislation'][i] === tab);
+  });
+  load(0);
+}
+
+loadStats();
+load(0);
+</script>
+</body>
+</html>
