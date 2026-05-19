@@ -18,8 +18,8 @@ Spring Boot 기반 백엔드 서버 + Spring Batch 공공데이터 수집 파이
 # 빌드
 ./gradlew build
 
-# Spring Batch 파이프라인 수동 실행
-./gradlew bootRun --args='--spring.batch.job.name=billCollectJob'
+# Spring Batch 파이프라인 수동 실행 (job.enabled=true 필수 — 없으면 JobLauncherApplicationRunner가 생성되지 않음)
+./gradlew bootRun --args='--spring.batch.job.enabled=true --spring.batch.job.name=billCollectJob'
 
 # DB 마이그레이션 (Flyway)
 ./gradlew flywayMigrate
@@ -75,23 +75,17 @@ src/main/java/com/dku/opensource/be/
 - 공공 API는 일별 호출 한도가 있으므로 Batch에서 불필요한 중복 호출 금지
 - FCM 토큰은 앱 재설치 시 변경되므로 `notification/` 에서 토큰 갱신 로직 확인 후 수정
 - Spring Batch의 `JobRepository`는 PostgreSQL 스키마를 사용하므로 테스트 시 H2 대신 Testcontainers 사용
+- Spring Batch 수동 실행 시 `--spring.batch.job.enabled=true`를 반드시 함께 전달해야 함 — `job.name`만으로는 `JobLauncherApplicationRunner` 빈이 생성되지 않아 아무 Job도 실행되지 않음
+- Flyway가 마이그레이션을 자동 실행하지 않는 상황(flyway_schema_history 테이블 없음) — V1~V3 마이그레이션은 `docker exec jigeumchamyeo-db psql -U postgres -d jigeumchamyeo`로 수동 적용됨. 근본 원인 미확인, 프로덕션 배포 전 반드시 확인 필요
+- `PetitionApiItemReader`의 ERACO 파라미터: URL에 한글을 직접 쓰면 RestTemplate이 이중 인코딩함 → `{eraco}` URI 템플릿 변수로 분리해야 함
+- `BillSummaryItemReader`는 `BPMBILLSUMMARY` API(`BILL_NO` 조회)를 사용하며 정상 동작함 — 22대 국회 법안 전체 커버. 대량 호출 시 API 차단 방지를 위해 `Thread.sleep(500)` 적용
+- Spring Batch 동일 파라미터로 완료된 Job은 재실행되지 않음 — 재실행 시 `--run.id=숫자` 고유 파라미터를 추가해야 함
 
 ## 미완료 사항 (다음 세션 시 확인)
 
-### 의안 본문(content) 미수집
-- **현재 상태**: `TVBPMBILL11` API는 메타데이터(제목/발의자/위원회/상태)만 제공 — `content` 필드 없음
-- **문제**: KAN-9 임베딩, KAN-12 에이전트 Q&A 모두 본문이 있어야 품질이 나옴
-- **검토할 옵션**:
-  1. `OK7XM1000938DS17215` API (발의법률안) 명세 확인 — 제안이유/주요내용 필드 존재 여부
-  2. `LINK_URL` 크롤링 (JS 렌더링이라 Playwright 필요 — 배치에 붙이기 무거움)
-  3. 일단 제목+위원회+발의자 기반으로 임베딩 진행, content는 추후 보완
-- **권장**: 옵션 1 먼저 확인 후 없으면 옵션 3으로 우선 진행
-
-### 청원 / 입법예고 API 키 미확보
-- `application-secret.yml`의 `petition-api-key`, `legislation-api-key` 값이 `PLACEHOLDER`
-- 해당 배치잡 실행 시 API 호출 실패 — 실제 키 발급 후 교체 필요
-- 국민동의청원: https://petitions.assembly.go.kr (API 키 발급 경로 확인 필요)
-- 입법예고: https://open.lawmaking.go.kr (API 키 발급 경로 확인 필요)
+### API 키 현황
+- `application-secret.yml`에 `bill-api-key`, `petition-api-key`, `legislation-api-key` 모두 동일한 값으로 설정되어 있음
+- 입법예고(`open.lawmaking.go.kr`)는 별도 포털 키가 필요할 수 있음 — 실행 시 인증 오류 발생 여부 확인 필요
 
 ### 미구현 패키지
 - `recommendation/` — KAN-9, 임베딩 + pgvector 코사인 유사도 추천
