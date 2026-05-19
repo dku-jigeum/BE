@@ -62,6 +62,7 @@ public class BillSummaryItemReader implements ItemReader<BillSummaryDto> {
     @SuppressWarnings("unchecked")
     private BillSummaryDto fetchSummary(String billNo) {
         try {
+            Thread.sleep(500);
             String raw = restTemplate.getForObject(API_URL, String.class, apiKey, billNo);
             if (raw == null) return null;
 
