@@ -29,6 +29,9 @@ public class LegislationNotice {
 
     private LocalDate deadline;
 
+    @Column(columnDefinition = "vector(1536)", insertable = false, updatable = false)
+    private String embeddingVector;
+
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
 

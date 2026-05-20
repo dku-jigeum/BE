@@ -26,6 +26,15 @@ public class BatchScheduler {
     @Qualifier("legislationCollectJob")
     private final Job legislationCollectJob;
 
+    @Qualifier("billEmbeddingJob")
+    private final Job billEmbeddingJob;
+
+    @Qualifier("petitionEmbeddingJob")
+    private final Job petitionEmbeddingJob;
+
+    @Qualifier("legislationEmbeddingJob")
+    private final Job legislationEmbeddingJob;
+
     // 매일 자정 실행
     @Scheduled(cron = "0 0 0 * * *")
     public void runAllCollectJobs() {
@@ -36,6 +45,9 @@ public class BatchScheduler {
         runJob(billCollectJob, params, "법안 수집");
         runJob(petitionCollectJob, params, "청원 수집");
         runJob(legislationCollectJob, params, "입법예고 수집");
+        runJob(billEmbeddingJob, params, "법안 임베딩");
+        runJob(petitionEmbeddingJob, params, "청원 임베딩");
+        runJob(legislationEmbeddingJob, params, "입법예고 임베딩");
     }
 
     private void runJob(Job job, JobParameters params, String name) {

@@ -20,16 +20,15 @@ public class FeedController {
             @AuthenticationPrincipal String userId,
             @RequestParam(defaultValue = "20") int limit) {
         return ApiResponse.success(
-                recommendationService.getRecommendedBills(userId, limit)
+                recommendationService.getRecommendedFeed(userId, limit)
                         .stream().map(FeedItem::from).toList());
     }
 
-    record FeedItem(String billNo, String title, String committee, String deadline, int viewCount, String source) {
-        static FeedItem from(RecommendationService.RecommendedBill rb) {
-            var b = rb.bill();
-            return new FeedItem(b.getBillNo(), b.getTitle(), b.getCommittee(),
-                    b.getDeadline() != null ? b.getDeadline().toString() : null,
-                    b.getViewCount(), rb.source());
+    record FeedItem(String id, String type, String title, String deadline,
+                    Integer participantCount, Integer viewCount, String source) {
+        static FeedItem from(RecommendationService.RecommendedItem r) {
+            return new FeedItem(r.id(), r.type(), r.title(), r.deadline(),
+                    r.participantCount(), r.viewCount(), r.source());
         }
     }
 }
