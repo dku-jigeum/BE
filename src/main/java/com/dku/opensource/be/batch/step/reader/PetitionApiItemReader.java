@@ -5,7 +5,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.batch.core.configuration.annotation.StepScope;
 import org.springframework.batch.infrastructure.item.ItemReader;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 
@@ -20,28 +19,23 @@ import java.util.Map;
 public class PetitionApiItemReader implements ItemReader<PetitionApiDto> {
 
     private static final String API_URL =
-            "https://open.assembly.go.kr/portal/openapi/PTTRCP" +
-            "?KEY={key}&Type=json&pIndex={page}&pSize={size}&ERACO={eraco}";
+            "https://petitions.assembly.go.kr/api/petits" +
+            "?usePaging=true&pageIndex={page}&recordCountPerPage={size}" +
+            "&sort=AGRE_CO-&pttDivCd=PA" +
+            "&sttusCode=AGRE_PROGRS,CMIT_FRWRD,PETIT_FORMATN&proceedAt=proceed";
 
-    private static final String ERACO = "제22대";
+    private static final int PAGE_SIZE = 100;
 
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
-    private final String apiKey;
-    private final int pageSize;
 
     private int currentPage = 1;
     private final Deque<PetitionApiDto> buffer = new ArrayDeque<>();
     private boolean exhausted = false;
 
-    public PetitionApiItemReader(RestTemplate restTemplate,
-                                  ObjectMapper objectMapper,
-                                  @Value("${public-data.petition-api-key}") String apiKey,
-                                  @Value("${public-data.page-size:100}") int pageSize) {
+    public PetitionApiItemReader(RestTemplate restTemplate, ObjectMapper objectMapper) {
         this.restTemplate = restTemplate;
         this.objectMapper = objectMapper;
-        this.apiKey = apiKey;
-        this.pageSize = pageSize;
     }
 
     @Override
@@ -55,22 +49,21 @@ public class PetitionApiItemReader implements ItemReader<PetitionApiDto> {
     @SuppressWarnings("unchecked")
     private void fetch() {
         try {
-            String raw = restTemplate.getForObject(API_URL, String.class, apiKey, currentPage, pageSize, ERACO);
+            String raw = restTemplate.getForObject(API_URL, String.class, currentPage, PAGE_SIZE);
             if (raw == null) { exhausted = true; return; }
 
-            Map<String, Object> body = objectMapper.readValue(raw, Map.class);
-
-            List<Object> wrapper = (List<Object>) body.get("PTTRCP");
-            if (wrapper == null || wrapper.size() < 2) { exhausted = true; return; }
-
-            Map<String, Object> rowsMap = (Map<String, Object>) wrapper.get(1);
-            List<Object> rows = (List<Object>) rowsMap.get("row");
+            List<Object> rows = objectMapper.readValue(raw, List.class);
             if (rows == null || rows.isEmpty()) { exhausted = true; return; }
 
             for (Object row : rows) {
                 buffer.add(objectMapper.convertValue(row, PetitionApiDto.class));
             }
-            currentPage++;
+
+            if (rows.size() < PAGE_SIZE) {
+                exhausted = true;
+            } else {
+                currentPage++;
+            }
         } catch (Exception e) {
             log.error("청원 API 호출 실패 (page={}): {}", currentPage, e.getMessage());
             exhausted = true;
