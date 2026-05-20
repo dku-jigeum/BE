@@ -4,6 +4,7 @@ import com.dku.opensource.be.common.ApiResponse;
 import com.dku.opensource.be.domain.bill.Bill;
 import com.dku.opensource.be.recommendation.RecommendationService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -17,7 +18,7 @@ public class FeedController {
 
     @GetMapping
     public ApiResponse<List<FeedItem>> getFeed(
-            @RequestParam String userId,
+            @AuthenticationPrincipal String userId,
             @RequestParam(defaultValue = "20") int limit) {
         List<Bill> bills = recommendationService.getRecommendedBills(userId, limit);
         return ApiResponse.success(bills.stream().map(FeedItem::from).toList());

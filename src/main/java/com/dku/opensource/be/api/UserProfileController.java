@@ -8,6 +8,7 @@ import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -22,28 +23,29 @@ public class UserProfileController {
 
     @PostMapping("/profile")
     @Transactional
-    public ResponseEntity<ApiResponse<ProfileResponse>> createProfile(@RequestBody CreateProfileRequest req) {
-        if (userProfileRepository.existsByUserId(req.userId())) {
+    public ResponseEntity<ApiResponse<ProfileResponse>> createProfile(
+            @AuthenticationPrincipal String userId,
+            @RequestBody CreateProfileRequest req) {
+        if (userProfileRepository.existsByUserId(userId)) {
             return ResponseEntity.status(HttpStatus.CONFLICT)
-                    .body(ApiResponse.error("이미 존재하는 사용자입니다."));
+                    .body(ApiResponse.error("이미 프로필이 존재합니다."));
         }
-        UserProfile profile = UserProfile.of(req.userId());
+        UserProfile profile = UserProfile.of(userId);
         if (req.interestTags() != null && !req.interestTags().isEmpty()) {
             profile.updateInterestTags(req.interestTags());
         }
         profile.updateProfile(req.age(), req.occupation());
         userProfileRepository.save(profile);
-        recommendationService.updateUserEmbedding(req.userId());
+        recommendationService.updateUserEmbedding(userId);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(ProfileResponse.from(profile)));
     }
 
-    @PutMapping("/profile/{userId}")
+    @PutMapping("/profile")
     @Transactional
     public ResponseEntity<ApiResponse<ProfileResponse>> updateProfile(
-            @PathVariable String userId,
+            @AuthenticationPrincipal String userId,
             @RequestBody UpdateProfileRequest req) {
-        UserProfile profile = userProfileRepository.findByUserId(userId)
-                .orElse(null);
+        UserProfile profile = userProfileRepository.findByUserId(userId).orElse(null);
         if (profile == null) return ResponseEntity.notFound().build();
 
         if (req.interestTags() != null) {
@@ -55,14 +57,14 @@ public class UserProfileController {
         return ResponseEntity.ok(ApiResponse.success(ProfileResponse.from(profile)));
     }
 
-    @GetMapping("/profile/{userId}")
-    public ResponseEntity<ApiResponse<ProfileResponse>> getProfile(@PathVariable String userId) {
+    @GetMapping("/profile")
+    public ResponseEntity<ApiResponse<ProfileResponse>> getProfile(@AuthenticationPrincipal String userId) {
         return userProfileRepository.findByUserId(userId)
                 .map(p -> ResponseEntity.ok(ApiResponse.success(ProfileResponse.from(p))))
                 .orElse(ResponseEntity.notFound().build());
     }
 
-    record CreateProfileRequest(String userId, Integer age, String occupation, List<String> interestTags) {}
+    record CreateProfileRequest(Integer age, String occupation, List<String> interestTags) {}
     record UpdateProfileRequest(Integer age, String occupation, List<String> interestTags) {}
 
     record ProfileResponse(String userId, Integer age, String occupation,
