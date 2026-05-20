@@ -17,13 +17,18 @@ public class BillItemWriter implements ItemWriter<Bill> {
 
     @Override
     public void write(Chunk<? extends Bill> chunk) {
-        int saved = 0;
+        int saved = 0, updated = 0;
         for (Bill bill : chunk) {
-            if (!billRepository.existsByBillNo(bill.getBillNo())) {
+            var existing = billRepository.findByBillNo(bill.getBillNo());
+            if (existing.isEmpty()) {
                 billRepository.save(bill);
                 saved++;
+            } else if (existing.get().getCommittee() == null && bill.getCommittee() != null) {
+                existing.get().updateCommittee(bill.getCommittee());
+                billRepository.save(existing.get());
+                updated++;
             }
         }
-        log.debug("법안 저장: {}건 (중복 제외)", saved);
+        log.debug("법안 저장: {}건 신규 / {}건 위원회 업데이트", saved, updated);
     }
 }
