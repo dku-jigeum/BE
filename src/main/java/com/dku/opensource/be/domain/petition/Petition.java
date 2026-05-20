@@ -29,6 +29,9 @@ public class Petition {
 
     private LocalDate deadline;
 
+    @Column(columnDefinition = "vector(1536)", insertable = false, updatable = false)
+    private String embeddingVector;
+
     @Column(nullable = false)
     private int participantCount = 0;
 

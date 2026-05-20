@@ -2,6 +2,10 @@ package com.dku.opensource.be.recommendation;
 
 import com.dku.opensource.be.domain.bill.Bill;
 import com.dku.opensource.be.domain.bill.BillRepository;
+import com.dku.opensource.be.domain.legislation.LegislationNotice;
+import com.dku.opensource.be.domain.legislation.LegislationNoticeRepository;
+import com.dku.opensource.be.domain.petition.Petition;
+import com.dku.opensource.be.domain.petition.PetitionRepository;
 import com.dku.opensource.be.domain.user.UserProfile;
 import com.dku.opensource.be.domain.user.UserProfileRepository;
 import jakarta.transaction.Transactional;
@@ -22,7 +26,12 @@ public class RecommendationService {
 
     private final EmbeddingService embeddingService;
     private final BillRepository billRepository;
+    private final PetitionRepository petitionRepository;
+    private final LegislationNoticeRepository legislationNoticeRepository;
     private final UserProfileRepository userProfileRepository;
+
+    public record RecommendedItem(String id, String type, String title, String deadline,
+                                  Integer participantCount, Integer viewCount, String source) {}
 
     @Transactional
     public void updateUserEmbedding(String userId) {
@@ -54,41 +63,88 @@ public class RecommendationService {
         return sb.toString().trim();
     }
 
-    public record RecommendedBill(Bill bill, String source) {}
-
-    public List<RecommendedBill> getRecommendedBills(String userId, int limit) {
+    public List<RecommendedItem> getRecommendedFeed(String userId, int limit) {
         UserProfile profile = userProfileRepository.findByUserId(userId)
                 .orElseThrow(() -> new IllegalArgumentException("User not found: " + userId));
 
         if (profile.getEmbeddingVector() == null) {
-            log.info("유저 {} 임베딩 벡터 없음 — 인기순 폴백", userId);
-            return billRepository.findTop20ByOrderByViewCountDesc().stream()
-                    .map(b -> new RecommendedBill(b, "trending"))
-                    .toList();
+            log.info("유저 {} 임베딩 벡터 없음 — 트렌딩 폴백", userId);
+            return buildTrendingFeed(limit);
         }
 
-        int personalizedCount = (int) Math.ceil(limit * 0.8);
-        int trendingSlots = limit - personalizedCount;
+        // 80% 개인화: bill 50% + petition 30% + legislation 20%
+        int personalizedTotal = (int) Math.ceil(limit * 0.8);
+        int billSlot = (int) Math.ceil(personalizedTotal * 0.5);
+        int petitionSlot = (int) Math.ceil(personalizedTotal * 0.3);
+        int legislationSlot = personalizedTotal - billSlot - petitionSlot;
 
-        List<RecommendedBill> personalized = billRepository
-                .findByEmbeddingSimilarityAfterDeadline(profile.getEmbeddingVector(), personalizedCount)
-                .stream().map(b -> new RecommendedBill(b, "personalized")).toList();
+        String vec = profile.getEmbeddingVector();
 
-        Set<String> seen = personalized.stream()
-                .map(r -> r.bill().getBillNo()).collect(Collectors.toSet());
+        List<RecommendedItem> personalized = new ArrayList<>();
+        billRepository.findByEmbeddingSimilarityAfterDeadline(vec, billSlot)
+                .forEach(b -> personalized.add(fromBill(b, "personalized")));
+        petitionRepository.findByEmbeddingSimilarityAfterDeadline(vec, petitionSlot)
+                .forEach(p -> personalized.add(fromPetition(p, "personalized")));
+        legislationNoticeRepository.findByEmbeddingSimilarityAfterDeadline(vec, legislationSlot)
+                .forEach(l -> personalized.add(fromLegislation(l, "personalized")));
 
-        List<RecommendedBill> trending = billRepository
-                .findTopByViewCountAfterDeadline(trendingSlots + seen.size())
-                .stream()
-                .filter(b -> !seen.contains(b.getBillNo()))
-                .limit(trendingSlots)
-                .map(b -> new RecommendedBill(b, "trending"))
-                .toList();
+        // 20% 다양성: 마감 임박 (D-30 이내) 3종에서 균등 배분, 중복 제거
+        int diversityTotal = limit - personalized.size();
+        int eachSlot = Math.max(1, diversityTotal / 3);
 
-        List<RecommendedBill> mixed = new ArrayList<>();
+        Set<String> seenBills = personalized.stream()
+                .filter(r -> "bill".equals(r.type())).map(RecommendedItem::id).collect(Collectors.toSet());
+        Set<String> seenPetitions = personalized.stream()
+                .filter(r -> "petition".equals(r.type())).map(RecommendedItem::id).collect(Collectors.toSet());
+        Set<String> seenLegislation = personalized.stream()
+                .filter(r -> "legislation".equals(r.type())).map(RecommendedItem::id).collect(Collectors.toSet());
+
+        List<RecommendedItem> diversity = new ArrayList<>();
+        billRepository.findDeadlineUrgent(eachSlot * 3).stream()
+                .filter(b -> !seenBills.contains(b.getBillNo())).limit(eachSlot)
+                .forEach(b -> diversity.add(fromBill(b, "trending")));
+        petitionRepository.findDeadlineUrgent(eachSlot * 3).stream()
+                .filter(p -> !seenPetitions.contains(p.getPetitionNo())).limit(eachSlot)
+                .forEach(p -> diversity.add(fromPetition(p, "trending")));
+        legislationNoticeRepository.findDeadlineUrgent(eachSlot * 3).stream()
+                .filter(l -> !seenLegislation.contains(l.getBillId())).limit(eachSlot)
+                .forEach(l -> diversity.add(fromLegislation(l, "trending")));
+
+        List<RecommendedItem> mixed = new ArrayList<>();
         mixed.addAll(personalized);
-        mixed.addAll(trending);
+        mixed.addAll(diversity);
         Collections.shuffle(mixed);
         return mixed;
+    }
+
+    private List<RecommendedItem> buildTrendingFeed(int limit) {
+        int each = Math.max(1, limit / 3);
+        List<RecommendedItem> items = new ArrayList<>();
+        billRepository.findTop20ByOrderByViewCountDesc().stream().limit(each)
+                .forEach(b -> items.add(fromBill(b, "trending")));
+        petitionRepository.findTop20ByOrderByParticipantCountDesc().stream().limit(each)
+                .forEach(p -> items.add(fromPetition(p, "trending")));
+        legislationNoticeRepository.findDeadlineUrgent(each)
+                .forEach(l -> items.add(fromLegislation(l, "trending")));
+        Collections.shuffle(items);
+        return items;
+    }
+
+    private RecommendedItem fromBill(Bill b, String source) {
+        return new RecommendedItem(b.getBillNo(), "bill", b.getTitle(),
+                b.getDeadline() != null ? b.getDeadline().toString() : null,
+                null, b.getViewCount(), source);
+    }
+
+    private RecommendedItem fromPetition(Petition p, String source) {
+        return new RecommendedItem(p.getPetitionNo(), "petition", p.getTitle(),
+                p.getDeadline() != null ? p.getDeadline().toString() : null,
+                p.getParticipantCount(), null, source);
+    }
+
+    private RecommendedItem fromLegislation(LegislationNotice l, String source) {
+        return new RecommendedItem(l.getBillId(), "legislation", l.getTitle(),
+                l.getDeadline() != null ? l.getDeadline().toString() : null,
+                null, null, source);
     }
 }
