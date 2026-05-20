@@ -1,7 +1,6 @@
 package com.dku.opensource.be.api;
 
 import com.dku.opensource.be.common.ApiResponse;
-import com.dku.opensource.be.domain.bill.Bill;
 import com.dku.opensource.be.recommendation.RecommendationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -20,14 +19,17 @@ public class FeedController {
     public ApiResponse<List<FeedItem>> getFeed(
             @AuthenticationPrincipal String userId,
             @RequestParam(defaultValue = "20") int limit) {
-        List<Bill> bills = recommendationService.getRecommendedBills(userId, limit);
-        return ApiResponse.success(bills.stream().map(FeedItem::from).toList());
+        return ApiResponse.success(
+                recommendationService.getRecommendedBills(userId, limit)
+                        .stream().map(FeedItem::from).toList());
     }
 
-    record FeedItem(String billNo, String title, String committee, String deadline, int viewCount) {
-        static FeedItem from(Bill b) {
+    record FeedItem(String billNo, String title, String committee, String deadline, int viewCount, String source) {
+        static FeedItem from(RecommendationService.RecommendedBill rb) {
+            var b = rb.bill();
             return new FeedItem(b.getBillNo(), b.getTitle(), b.getCommittee(),
-                    b.getDeadline() != null ? b.getDeadline().toString() : null, b.getViewCount());
+                    b.getDeadline() != null ? b.getDeadline().toString() : null,
+                    b.getViewCount(), rb.source());
         }
     }
 }

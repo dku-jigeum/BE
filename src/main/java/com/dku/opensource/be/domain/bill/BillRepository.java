@@ -33,6 +33,10 @@ public interface BillRepository extends JpaRepository<Bill, Long> {
 
     List<Bill> findTop20ByOrderByViewCountDesc();
 
+    @Query(value = "SELECT * FROM bill WHERE (deadline IS NULL OR deadline >= CURRENT_DATE) ORDER BY view_count DESC LIMIT :limit",
+            nativeQuery = true)
+    List<Bill> findTopByViewCountAfterDeadline(@Param("limit") int limit);
+
     Page<Bill> findByCommittee(String committee, Pageable pageable);
 
     @Query(value = "SELECT bill_no FROM bill WHERE embedding_vector IS NULL",
