@@ -31,6 +31,12 @@ public class UserProfile {
     @Column(columnDefinition = "vector(1536)", insertable = false, updatable = false)
     private String embeddingVector;
 
+    @Column
+    private Integer age;
+
+    @Column(length = 50)
+    private String occupation;
+
     @Column(length = 500)
     private String fcmToken;
 
@@ -46,6 +52,11 @@ public class UserProfile {
     public void updateInterestTags(List<String> interestTags) {
         this.interestTags.clear();
         this.interestTags.addAll(interestTags);
+    }
+
+    public void updateProfile(Integer age, String occupation) {
+        this.age = age;
+        this.occupation = occupation;
     }
 
     public void updateFcmToken(String fcmToken) {
