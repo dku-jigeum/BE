@@ -9,7 +9,11 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -50,16 +54,41 @@ public class RecommendationService {
         return sb.toString().trim();
     }
 
-    public List<Bill> getRecommendedBills(String userId, int limit) {
+    public record RecommendedBill(Bill bill, String source) {}
+
+    public List<RecommendedBill> getRecommendedBills(String userId, int limit) {
         UserProfile profile = userProfileRepository.findByUserId(userId)
                 .orElseThrow(() -> new IllegalArgumentException("User not found: " + userId));
 
         if (profile.getEmbeddingVector() == null) {
             log.info("유저 {} 임베딩 벡터 없음 — 인기순 폴백", userId);
-            return billRepository.findTop20ByOrderByViewCountDesc();
+            return billRepository.findTop20ByOrderByViewCountDesc().stream()
+                    .map(b -> new RecommendedBill(b, "trending"))
+                    .toList();
         }
 
-        return billRepository.findByEmbeddingSimilarityAfterDeadline(
-                profile.getEmbeddingVector(), limit);
+        int personalizedCount = (int) Math.ceil(limit * 0.8);
+        int trendingSlots = limit - personalizedCount;
+
+        List<RecommendedBill> personalized = billRepository
+                .findByEmbeddingSimilarityAfterDeadline(profile.getEmbeddingVector(), personalizedCount)
+                .stream().map(b -> new RecommendedBill(b, "personalized")).toList();
+
+        Set<String> seen = personalized.stream()
+                .map(r -> r.bill().getBillNo()).collect(Collectors.toSet());
+
+        List<RecommendedBill> trending = billRepository
+                .findTopByViewCountAfterDeadline(trendingSlots + seen.size())
+                .stream()
+                .filter(b -> !seen.contains(b.getBillNo()))
+                .limit(trendingSlots)
+                .map(b -> new RecommendedBill(b, "trending"))
+                .toList();
+
+        List<RecommendedBill> mixed = new ArrayList<>();
+        mixed.addAll(personalized);
+        mixed.addAll(trending);
+        Collections.shuffle(mixed);
+        return mixed;
     }
 }
