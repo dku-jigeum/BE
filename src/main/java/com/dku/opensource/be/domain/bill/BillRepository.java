@@ -18,6 +18,9 @@ public interface BillRepository extends JpaRepository<Bill, Long> {
     @Query("SELECT b.billNo FROM Bill b WHERE b.content IS NULL")
     List<String> findBillNosWithNullContent(Pageable pageable);
 
+    @Query("SELECT COUNT(b) FROM Bill b WHERE b.content IS NOT NULL AND b.content <> ''")
+    long countBillsWithContent();
+
     List<Bill> findByDeadlineBetween(LocalDate from, LocalDate to);
 
     List<Bill> findTop20ByOrderByViewCountDesc();
