@@ -43,6 +43,11 @@
   .cnt { font-weight: 600; color: #c084fc; }
   .deadline { color: #fb923c; font-size: 12px; }
   .deadline.soon { color: #f87171; font-weight: 600; }
+  .expandable { cursor: pointer; }
+  .expandable:hover td { background: #1e2236 !important; }
+  .content-row td { padding: 0; }
+  .content-box { background: #12141e; border-top: 1px solid #2d3148; padding: 16px 20px; font-size: 12px; line-height: 1.7; color: #94a3b8; white-space: pre-wrap; word-break: break-word; display: none; }
+  .content-box.open { display: block; }
 </style>
 </head>
 <body>
@@ -103,19 +108,35 @@ function deadlineTag(dateStr) {
 async function loadBills(page) {
   const d = await api(`/temp/bills?page=${page}&size=20`);
   state.total = d.totalElements; state.totalPages = d.totalPages;
-  const rows = d.content.map(b => `
-    <tr>
+  const rows = d.content.map((b, i) => {
+    const hasContent = b.content != null && b.content.trim() !== '';
+    const rowId = `bill-content-${i}`;
+    return `
+    <tr class="expandable" onclick="toggleContent('${rowId}')">
       <td class="num" style="color:#475569">${b.billNo}</td>
       <td class="title-cell"><div class="main">${b.title}</div></td>
-      <td>${b.hasContent ? '<span class="badge badge-yes">수집됨</span>' : '<span class="badge badge-no">미수집</span>'}</td>
+      <td>${hasContent ? '<span class="badge badge-yes">수집됨</span>' : '<span class="badge badge-no">미수집</span>'}</td>
       <td>${deadlineTag(b.deadline)}</td>
       <td class="num">${b.viewCount}</td>
-    </tr>`).join('');
+    </tr>
+    <tr class="content-row">
+      <td colspan="5"><div class="content-box" id="${rowId}">${hasContent ? escHtml(b.content) : '<span style="color:#475569">본문 미수집</span>'}</div></td>
+    </tr>`;
+  }).join('');
   document.getElementById('table-area').innerHTML = `
     <div class="table-wrap"><table>
       <thead><tr><th>의안번호</th><th>법안명</th><th>요약본</th><th>마감일</th><th>조회수</th></tr></thead>
       <tbody>${rows}</tbody>
     </table></div>`;
+}
+
+function toggleContent(id) {
+  const el = document.getElementById(id);
+  el.classList.toggle('open');
+}
+
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
 async function loadPetitions(page) {

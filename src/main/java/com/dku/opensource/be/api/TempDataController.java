@@ -44,7 +44,7 @@ public class TempDataController {
         Page<Bill> bills = billRepository.findAll(PageRequest.of(page, size, Sort.by("id").descending()));
         return ApiResponse.success(bills.map(b -> new BillRow(
                 b.getBillNo(), b.getTitle(),
-                b.getContent() != null && !b.getContent().isBlank(),
+                b.getContent(),
                 b.getDeadline() != null ? b.getDeadline().toString() : null,
                 b.getViewCount()
         )));
@@ -73,7 +73,7 @@ public class TempDataController {
         )));
     }
 
-    record BillRow(String billNo, String title, boolean hasContent, String deadline, int viewCount) {}
+    record BillRow(String billNo, String title, String content, String deadline, int viewCount) {}
     record PetitionRow(String petitionNo, String title, int participantCount, String deadline) {}
     record LegislationRow(String billNo, String title, String deadline) {}
 }
