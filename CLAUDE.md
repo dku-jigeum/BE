@@ -88,10 +88,48 @@ src/main/java/com/dku/opensource/be/
 - 입법예고(`open.lawmaking.go.kr`)는 별도 포털 키가 필요할 수 있음 — 실행 시 인증 오류 발생 여부 확인 필요
 
 ### 미구현 패키지
-- `recommendation/` — KAN-9, 임베딩 + pgvector 코사인 유사도 추천
-- `api/` — KAN-10, REST API 엔드포인트 전체
 - `notification/` — KAN-11, FCM D-7/D-3/D-1 알림
-- `agent/` — KAN-12, ReAct 루프 + EXAONE 3.5 + 의안 Q&A 툴
+- `agent/` — KAN-12, Agentic Loop (Spring AI + OpenAI Tool Calling)
+
+## Agent 설계 방향 (KAN-12)
+
+### 아키텍처
+
+오케스트레이터 에이전트 하나가 유저 요청을 받아 필요한 툴을 선택·실행하는 구조.
+**Spring AI + OpenAI GPT-4o** 사용 — OpenAI 키 이미 확보됨.
+
+```
+유저 액션
+    ↓
+GPT-4o 오케스트레이터 (Agentic Loop)
+    ├── 법안 Q&A 툴       → DB 검색 + LLM 답변
+    ├── 캘린더 등록 툴    → iCal(.ics) 생성
+    ├── 법안 요약 툴      → content 3줄 요약
+    ├── 관련 법안 툴      → pgvector 유사도 검색 + 연관성 설명
+    ├── 관련 청원 연결 툴 → 동일 주제 청원 검색
+    └── 법안 비교 툴      → 두 법안 차이점 설명
+```
+
+### 구현 예정 툴 목록
+
+| 툴 | 트리거 | 설명 |
+|----|--------|------|
+| 법안 Q&A | 채팅 입력 | "이 법안이 자영업자에게 미치는 영향은?" |
+| 캘린더 등록 | 법안 클릭 | 마감일 iCal 생성, 앱에서 기기 캘린더에 등록 |
+| 3줄 요약 | 법안 상세 진입 | content 자동 요약 |
+| 관련 법안 | 법안 상세 하단 | 유사 법안 + 연관성 설명 |
+| 관련 청원 연결 | 법안 상세 | 동일 주제 청원 연결 |
+| 법안 비교 | 두 법안 선택 | 두 법안 차이점 설명 |
+
+### 캘린더 등록 구현 방식
+- `GET /api/bills/{billNo}/calendar` → `.ics` 파일 반환
+- 프론트에서 파일 열어 기기 캘린더 등록
+- Google Calendar API 연동은 2차 (OAuth 필요)
+
+### 기술 스택
+- **Spring AI** (`spring-ai-openai-spring-boot-starter`) — Tool Calling 내장 지원
+- **OpenAI GPT-4o** — 오케스트레이터 (키 기확보)
+- `@Tool` 어노테이션으로 툴 등록
 
 ## Jira 작업 워크플로우
 
@@ -116,10 +154,10 @@ src/main/java/com/dku/opensource/be/
 | [KAN-8](https://dankook-opensource-project.atlassian.net/browse/KAN-8) | [BE] 공공데이터 수집 Spring Batch 파이프라인 구현 (국회 법안) | ✅ 완료 |
 | [KAN-13](https://dankook-opensource-project.atlassian.net/browse/KAN-13) | [BE] 국민동의청원 수집 Spring Batch 파이프라인 구현 및 검증 | ✅ 완료 |
 | [KAN-14](https://dankook-opensource-project.atlassian.net/browse/KAN-14) | [BE] 입법예고 수집 Spring Batch 파이프라인 구현 및 검증 | 해야 할 일 |
-| [KAN-9](https://dankook-opensource-project.atlassian.net/browse/KAN-9) | [BE] pgvector 기반 개인화 추천 로직 구현 (코사인 유사도 + 마감일 필터) | 해야 할 일 |
-| [KAN-10](https://dankook-opensource-project.atlassian.net/browse/KAN-10) | [BE] REST API 구현 (피드, 법안, 청원, 관심사 설정) | 해야 할 일 |
+| [KAN-9](https://dankook-opensource-project.atlassian.net/browse/KAN-9) | [BE] pgvector 기반 개인화 추천 로직 구현 (코사인 유사도 + 마감일 필터) | ✅ 완료 |
+| [KAN-10](https://dankook-opensource-project.atlassian.net/browse/KAN-10) | [BE] REST API 구현 (피드, 법안, 청원, 관심사 설정) | ✅ 완료 |
 | [KAN-11](https://dankook-opensource-project.atlassian.net/browse/KAN-11) | [BE] FCM 마감 임박 푸시 알림 구현 (D-7 / D-3 / D-1) | 해야 할 일 |
-| [KAN-12](https://dankook-opensource-project.atlassian.net/browse/KAN-12) | [BE] ReAct 에이전트 구현 (EXAONE 3.5 + 의안 Q&A) | 해야 할 일 |
+| [KAN-12](https://dankook-opensource-project.atlassian.net/browse/KAN-12) | [BE] Agentic Loop 구현 (Spring AI + OpenAI Tool Calling) | 해야 할 일 |
 
 > 이 표는 작업 완수 시마다 직접 갱신한다. Jira가 항상 최신 상태의 기준이다.
 
