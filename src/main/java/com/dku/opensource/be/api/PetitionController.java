@@ -32,18 +32,22 @@ public class PetitionController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
-    record PetitionSummary(String petitionNo, String title, int participantCount, String deadline) {
+    private static final String PETITION_URL = "https://petitions.assembly.go.kr/status/registered/";
+
+    record PetitionSummary(String petitionNo, String title, int participantCount, String deadline, String url) {
         static PetitionSummary from(Petition p) {
             return new PetitionSummary(p.getPetitionNo(), p.getTitle(), p.getParticipantCount(),
-                    p.getDeadline() != null ? p.getDeadline().toString() : null);
+                    p.getDeadline() != null ? p.getDeadline().toString() : null,
+                    PETITION_URL + p.getPetitionNo());
         }
     }
 
     record PetitionDetail(String petitionNo, String title, String content,
-                          int participantCount, String deadline) {
+                          int participantCount, String deadline, String url) {
         static PetitionDetail from(Petition p) {
             return new PetitionDetail(p.getPetitionNo(), p.getTitle(), p.getContent(),
-                    p.getParticipantCount(), p.getDeadline() != null ? p.getDeadline().toString() : null);
+                    p.getParticipantCount(), p.getDeadline() != null ? p.getDeadline().toString() : null,
+                    PETITION_URL + p.getPetitionNo());
         }
     }
 }
