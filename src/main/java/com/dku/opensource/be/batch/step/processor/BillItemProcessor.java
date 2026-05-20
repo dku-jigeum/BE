@@ -20,9 +20,10 @@ public class BillItemProcessor implements ItemProcessor<BillApiDto, Bill> {
         if (dto.getBillNo() == null || dto.getBillNo().isBlank()) return null;
 
         String title = normalize(dto.getBillName());
+        String committee = normalize(dto.getCommittee());
         LocalDate deadline = parseDate(dto.getProcDt());
 
-        return Bill.of(dto.getBillNo().trim(), title, null, deadline);
+        return Bill.of(dto.getBillNo().trim(), title, committee.isBlank() ? null : committee, null, deadline);
     }
 
     private String normalize(String value) {

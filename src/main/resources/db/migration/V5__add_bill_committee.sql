@@ -1,0 +1,1 @@
+ALTER TABLE bill ADD COLUMN committee VARCHAR(100);
