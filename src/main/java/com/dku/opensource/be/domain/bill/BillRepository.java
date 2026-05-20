@@ -1,5 +1,6 @@
 package com.dku.opensource.be.domain.bill;
 
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -20,6 +21,12 @@ public interface BillRepository extends JpaRepository<Bill, Long> {
 
     @Query("SELECT COUNT(b) FROM Bill b WHERE b.content IS NOT NULL AND b.content <> ''")
     long countBillsWithContent();
+
+    @Query("SELECT b FROM Bill b WHERE b.content IS NOT NULL AND b.content <> ''")
+    Page<Bill> findWithContent(Pageable pageable);
+
+    @Query("SELECT b FROM Bill b WHERE b.content IS NULL OR b.content = ''")
+    Page<Bill> findWithoutContent(Pageable pageable);
 
     List<Bill> findByDeadlineBetween(LocalDate from, LocalDate to);
 

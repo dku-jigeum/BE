@@ -40,8 +40,17 @@ public class TempDataController {
     @GetMapping("/bills")
     public ApiResponse<Page<BillRow>> getBills(
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
-        Page<Bill> bills = billRepository.findAll(PageRequest.of(page, size, Sort.by("id").descending()));
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false) Boolean hasContent) {
+        var pageable = PageRequest.of(page, size, Sort.by("id").descending());
+        Page<Bill> bills;
+        if (Boolean.TRUE.equals(hasContent)) {
+            bills = billRepository.findWithContent(pageable);
+        } else if (Boolean.FALSE.equals(hasContent)) {
+            bills = billRepository.findWithoutContent(pageable);
+        } else {
+            bills = billRepository.findAll(pageable);
+        }
         return ApiResponse.success(bills.map(b -> new BillRow(
                 b.getBillNo(), b.getTitle(),
                 b.getContent(),
