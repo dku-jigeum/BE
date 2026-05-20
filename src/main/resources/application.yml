@@ -30,3 +30,6 @@ spring:
 
 public-data:
   content-enrich-limit: 200
+
+openai:
+  api-key: ${OPENAI_API_KEY:}
