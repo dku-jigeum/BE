@@ -43,6 +43,15 @@
   .cnt { font-weight: 600; color: #c084fc; }
   .deadline { color: #fb923c; font-size: 12px; }
   .deadline.soon { color: #f87171; font-weight: 600; }
+  .expandable { cursor: pointer; }
+  .expandable:hover td { background: #1e2236 !important; }
+  .content-row td { padding: 0; }
+  .content-box { background: #12141e; border-top: 1px solid #2d3148; padding: 16px 20px; font-size: 12px; line-height: 1.7; color: #94a3b8; white-space: pre-wrap; word-break: break-word; display: none; }
+  .content-box.open { display: block; }
+  .filter-bar { display: flex; gap: 8px; margin-bottom: 16px; }
+  .filter-btn { padding: 6px 14px; border-radius: 6px; border: 1px solid #2d3148; background: #1a1d27; color: #64748b; cursor: pointer; font-size: 12px; transition: all 0.15s; }
+  .filter-btn:hover { border-color: #818cf8; color: #a5b4fc; }
+  .filter-btn.active { background: #2d2f4a; border-color: #818cf8; color: #818cf8; font-weight: 600; }
 </style>
 </head>
 <body>
@@ -70,7 +79,7 @@
 </div>
 
 <script>
-const state = { tab: 'bills', page: 0, total: 0, totalPages: 0 };
+const state = { tab: 'bills', page: 0, total: 0, totalPages: 0, billFilter: 'all' };
 
 async function api(path) {
   const r = await fetch(path);
@@ -100,22 +109,54 @@ function deadlineTag(dateStr) {
   return `<span class="${cls}">${dateStr} <b>${label}</b></span>`;
 }
 
+function setBillFilter(f) {
+  state.billFilter = f;
+  document.querySelectorAll('.filter-btn').forEach(el => {
+    el.classList.toggle('active', el.dataset.filter === f);
+  });
+  load(0);
+}
+
 async function loadBills(page) {
-  const d = await api(`/temp/bills?page=${page}&size=20`);
+  const filterParam = state.billFilter === 'collected' ? '&hasContent=true'
+                    : state.billFilter === 'missing'   ? '&hasContent=false'
+                    : '';
+  const d = await api(`/temp/bills?page=${page}&size=20${filterParam}`);
   state.total = d.totalElements; state.totalPages = d.totalPages;
-  const rows = d.content.map(b => `
-    <tr>
+  const rows = d.content.map((b, i) => {
+    const hasContent = b.content != null && b.content.trim() !== '';
+    const rowId = `bill-content-${i}`;
+    return `
+    <tr class="expandable" onclick="toggleContent('${rowId}')">
       <td class="num" style="color:#475569">${b.billNo}</td>
       <td class="title-cell"><div class="main">${b.title}</div></td>
-      <td>${b.hasContent ? '<span class="badge badge-yes">수집됨</span>' : '<span class="badge badge-no">미수집</span>'}</td>
+      <td>${hasContent ? '<span class="badge badge-yes">수집됨</span>' : '<span class="badge badge-no">미수집</span>'}</td>
       <td>${deadlineTag(b.deadline)}</td>
       <td class="num">${b.viewCount}</td>
-    </tr>`).join('');
+    </tr>
+    <tr class="content-row">
+      <td colspan="5"><div class="content-box" id="${rowId}">${hasContent ? escHtml(b.content) : '<span style="color:#475569">본문 미수집</span>'}</div></td>
+    </tr>`;
+  }).join('');
   document.getElementById('table-area').innerHTML = `
+    <div class="filter-bar">
+      <button class="filter-btn${state.billFilter==='all'?' active':''}" data-filter="all" onclick="setBillFilter('all')">전체</button>
+      <button class="filter-btn${state.billFilter==='collected'?' active':''}" data-filter="collected" onclick="setBillFilter('collected')">수집됨</button>
+      <button class="filter-btn${state.billFilter==='missing'?' active':''}" data-filter="missing" onclick="setBillFilter('missing')">미수집</button>
+    </div>
     <div class="table-wrap"><table>
       <thead><tr><th>의안번호</th><th>법안명</th><th>요약본</th><th>마감일</th><th>조회수</th></tr></thead>
       <tbody>${rows}</tbody>
     </table></div>`;
+}
+
+function toggleContent(id) {
+  const el = document.getElementById(id);
+  el.classList.toggle('open');
+}
+
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
 async function loadPetitions(page) {
