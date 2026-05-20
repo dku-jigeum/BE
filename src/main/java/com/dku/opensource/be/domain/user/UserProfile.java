@@ -28,6 +28,9 @@ public class UserProfile {
     @Column(name = "tag", length = 100)
     private List<String> interestTags = new ArrayList<>();
 
+    @Column(columnDefinition = "vector(1536)", insertable = false, updatable = false)
+    private String embeddingVector;
+
     @Column(length = 500)
     private String fcmToken;
 
