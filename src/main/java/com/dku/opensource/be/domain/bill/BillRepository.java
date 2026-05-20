@@ -33,6 +33,8 @@ public interface BillRepository extends JpaRepository<Bill, Long> {
 
     List<Bill> findTop20ByOrderByViewCountDesc();
 
+    Page<Bill> findByCommittee(String committee, Pageable pageable);
+
     @Query(value = "SELECT bill_no FROM bill WHERE embedding_vector IS NULL",
             nativeQuery = true)
     List<String> findBillNosWithNullEmbedding(Pageable pageable);

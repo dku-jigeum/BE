@@ -25,15 +25,29 @@ public class RecommendationService {
         UserProfile profile = userProfileRepository.findByUserId(userId)
                 .orElseThrow(() -> new IllegalArgumentException("User not found: " + userId));
 
-        if (profile.getInterestTags().isEmpty()) {
-            log.info("유저 {} 관심 태그 없음 — 임베딩 생략", userId);
+        String text = buildProfileText(profile);
+        if (text.isBlank()) {
+            log.info("유저 {} 프로필 정보 없음 — 임베딩 생략", userId);
             return;
         }
 
-        String text = String.join(" ", profile.getInterestTags());
         String vector = embeddingService.embed(text);
         userProfileRepository.updateEmbeddingVector(userId, vector);
-        log.info("유저 {} 임베딩 업데이트 완료 (태그: {})", userId, profile.getInterestTags());
+        log.info("유저 {} 임베딩 업데이트 완료 (텍스트: {})", userId, text);
+    }
+
+    private String buildProfileText(UserProfile profile) {
+        StringBuilder sb = new StringBuilder();
+        if (profile.getAge() != null) {
+            sb.append(profile.getAge() / 10 * 10).append("대 ");
+        }
+        if (profile.getOccupation() != null && !profile.getOccupation().isBlank()) {
+            sb.append(profile.getOccupation()).append(". ");
+        }
+        if (!profile.getInterestTags().isEmpty()) {
+            sb.append("관심 분야: ").append(String.join(" ", profile.getInterestTags()));
+        }
+        return sb.toString().trim();
     }
 
     public List<Bill> getRecommendedBills(String userId, int limit) {
