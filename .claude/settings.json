@@ -1,0 +1,52 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git status)",
+      "Bash(git diff*)",
+      "Bash(git log*)",
+      "Bash(git branch*)",
+      "Bash(./gradlew test*)",
+      "Bash(./gradlew build*)",
+      "Bash(./gradlew bootRun*)",
+      "Bash(./gradlew flywayMigrate*)"
+    ],
+    "deny": [
+      "Read(**/.env)",
+      "Edit(**/.env)",
+      "Write(**/.env)",
+      "Read(**/application-secret.yml)",
+      "Edit(**/application-secret.yml)"
+    ]
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "type": "command",
+        "command": "bash .claude/hooks/session-start.sh"
+      }
+    ],
+    "PreToolUse": [
+      {
+        "type": "command",
+        "command": "bash .claude/hooks/pre-bash.sh",
+        "matcher": "Bash"
+      },
+      {
+        "type": "command",
+        "command": "bash .claude/hooks/post-edit-md.sh",
+        "matcher": "Edit"
+      },
+      {
+        "type": "command",
+        "command": "bash .claude/hooks/post-edit-md.sh",
+        "matcher": "Write"
+      }
+    ],
+    "Stop": [
+      {
+        "type": "command",
+        "command": "bash .claude/hooks/stop-summary.sh"
+      }
+    ]
+  }
+}

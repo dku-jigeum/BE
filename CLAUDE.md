@@ -1,201 +1,184 @@
-# jigeumchamyeo-backend
+---
+level: 1
+mode: committed
+status: active
+last_verified: 2026-05-29
+confidence: 0.9
+owners: [박세현]
+description: Claude Code가 매 세션 읽는 정체성·원칙·규칙. 작업 시작 전 자동 로드.
+---
 
-Spring Boot 기반 백엔드 서버 + Spring Batch 공공데이터 수집 파이프라인.
-한국 국회 의안정보 / 국민동의청원 / 입법예고 API를 수집하고, pgvector 기반 개인화 추천 피드 / ReAct 에이전트 기반 의안 Q&A / FCM 마감 임박 알림을 제공한다.
+# CLAUDE.md — jigeumchamyeo-backend
 
-## Commands
+> Spring Boot 기반 국회 의안·청원·입법예고 수집·추천·에이전트 백엔드.
+> 팀: 1인 + AI (parksehyn)
 
-```bash
-# 빌드 및 실행
-./gradlew bootRun
+---
 
-# 테스트
-./gradlew test
+## 0. 저장소 구성
 
-# 특정 테스트만
-./gradlew test --tests "com.dku.opensource.be.*"
+| 디렉터리 | 역할 |
+|---|---|
+| `src/` | Spring Boot 애플리케이션 소스 |
+| `docs/` | 시스템 설계·도메인·워크플로우 문서 |
+| `journal/` | 하루 작업 로그 · 세션 인수인계 |
+| `.claude/` | AI 하네스 — 서브에이전트·훅·스크립트·권한 |
 
-# 빌드
-./gradlew build
+빌드/테스트는 `README.md` 기준. 이 파일에 반복하지 않는다.
 
-# Spring Batch 파이프라인 수동 실행 (job.enabled=true 필수 — 없으면 JobLauncherApplicationRunner가 생성되지 않음)
-./gradlew bootRun --args='--spring.batch.job.enabled=true --spring.batch.job.name=billCollectJob'
+**운영 매뉴얼**: [`docs/WORKFLOW.md`](docs/WORKFLOW.md)
 
-# DB 마이그레이션 (Flyway)
-./gradlew flywayMigrate
+---
+
+## 1. Think Before Coding
+
+**Don't assume. Don't hide confusion. Surface tradeoffs.**
+
+- 가정을 명시적으로 말한다. 불확실하면 묻는다.
+- 해석이 여러 가지면 모두 제시. 조용히 하나를 고르지 않는다.
+- 더 단순한 길이 있으면 말한다.
+- 모호하면 멈추고 무엇이 모호한지 짚고 묻는다.
+
+## 2. Simplicity First
+
+- 요청되지 않은 기능 금지.
+- 단일 호출 코드에 추상화 금지.
+- "시니어가 보면 과설계라 할까?" yes이면 단순화.
+
+## 3. Surgical Changes
+
+- 주변 코드를 "개선"하지 않는다.
+- 망가지지 않은 것을 리팩터링하지 않는다.
+- 네 변경으로 생긴 고아(import/변수/메서드)만 정리.
+
+## 4. Goal-Driven Execution
+
+검증 가능한 목표로 바꾼다:
+- "버그 수정" → 재현 테스트 작성 → 통과
+- "기능 추가" → 검증 기준 먼저 → 구현 → `./gradlew test`
+
+다단계 작업이면 계획 먼저:
+```
+1. [단계] → 검증: [확인 방법]
+2. [단계] → 검증: [확인 방법]
 ```
 
-## Architecture
+**최종 검증**: `./gradlew test` · `./gradlew build`
 
-```
-src/main/java/com/dku/opensource/be/
-├── api/           # REST API 컨트롤러 (피드, 법안, 청원, 알림, 에이전트)
-├── batch/         # Spring Batch 공공데이터 수집 파이프라인
-│   ├── job/       # Job 정의
-│   ├── step/      # Step (Reader / Processor / Writer)
-│   └── scheduler/ # Spring Scheduler (매일 자정 실행)
-├── domain/        # Entity, Repository (JPA)
-├── recommendation/# 한국어 임베딩 모델 + pgvector 코사인 유사도 추천 로직
-├── agent/         # ReAct 패턴 직접 구현 + EXAONE 3.5 의안 Q&A
-│   ├── react/     # ReAct 루프 (Thought → Action → Observation)
-│   ├── tool/      # Agent Tool 정의 (법안 검색, 상세 조회 등)
-│   └── model/     # EXAONE 3.5 연동 (HTTP 호출)
-├── notification/  # FCM 푸시 알림 (D-7 / D-3 / D-1)
-└── common/        # 공통 유틸, 예외 처리, 설정
-```
+---
 
-## Tech Stack
+## 5. 문서 포인터 (docs/)
 
-- Java 17, Spring Boot 4.x, Gradle
-- PostgreSQL + pgvector 확장 (코사인 유사도 검색)
-- Spring Batch (공공데이터 수집, 매일 자정)
-- Spring Scheduler (마감 임박 알림 트리거)
-- Firebase Cloud Messaging (FCM)
-- Flyway (DB 마이그레이션)
-- 한국어 임베딩 모델 (ko-sroberta 등 경량 모델) — 추천 피드용 벡터 생성
-- EXAONE 3.5 (LG AI, 한국어 특화 LLM) — ReAct 에이전트 추론·답변 생성
-- ReAct 패턴 직접 구현 — Thought / Action / Observation 루프
+| 주제 | 문서 | 언제 읽는가 |
+|---|---|---|
+| **팀 워크플로우 · 정합성 통제 (L1)** | [`docs/WORKFLOW.md`](docs/WORKFLOW.md) | 작업 루프·브랜치·규칙 — 작업 시작 전 |
+| 시스템 아키텍처 | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | 패키지 구조·기술스택·데이터 흐름 변경 시 |
+| 도메인 모델 · DB 스키마 | [`docs/DOMAIN_DESIGN.md`](docs/DOMAIN_DESIGN.md) | Entity·마이그레이션·Repository 변경 시 |
+| 변경 이력 | [`docs/CHANGELOG.md`](docs/CHANGELOG.md) | 모든 변경의 종착지 |
+| 미완료·할 일 | [`docs/TODO.md`](docs/TODO.md) | Jira 연동·외부 설정 체크리스트 |
 
-## Key Rules
+하루 작업 로그: [`journal/`](journal/) — 어제 흐름 이어받기
 
-- Entity는 반드시 `domain/` 패키지 안에 위치시킨다
-- API 응답은 `ApiResponse<T>` 공통 래퍼를 사용한다
-- 공공 API 호출은 `batch/step/` 안의 ItemReader에서만 수행한다 — 서비스 레이어에서 직접 호출하지 않는다
-- pgvector 쿼리는 Native Query로 작성한다 (`@Query(nativeQuery = true)`)
-- 환경변수(API 키, FCM 키 등)는 절대 코드에 하드코딩하지 않는다 — `application-secret.yml` 사용 (git 제외)
-- Batch Job은 멱등성을 보장해야 한다 (중복 실행 시 데이터 중복 없음)
-- 임베딩 모델(추천용)과 EXAONE(에이전트용)은 역할을 분리한다 — 추천에 EXAONE 사용 금지
-- ReAct 루프는 `agent/react/` 에서만 구현한다
-- LLM 모델 호출은 `agent/model/` 에서만 수행한다
-- Agent Tool 정의는 `agent/tool/` 에 위치시킨다
+---
 
-## Gotchas
+## 6. 변경 기록 규칙 (필수)
 
-- pgvector 확장은 DB 초기화 시 `CREATE EXTENSION IF NOT EXISTS vector;` 필요 — Flyway 첫 마이그레이션에 포함되어 있음
-- 공공 API는 일별 호출 한도가 있으므로 Batch에서 불필요한 중복 호출 금지
-- FCM 토큰은 앱 재설치 시 변경되므로 `notification/` 에서 토큰 갱신 로직 확인 후 수정
-- Spring Batch의 `JobRepository`는 PostgreSQL 스키마를 사용하므로 테스트 시 H2 대신 Testcontainers 사용
-- Spring Batch 수동 실행 시 `--spring.batch.job.enabled=true`를 반드시 함께 전달해야 함 — `job.name`만으로는 `JobLauncherApplicationRunner` 빈이 생성되지 않아 아무 Job도 실행되지 않음
-- Flyway가 마이그레이션을 자동 실행하지 않는 상황(flyway_schema_history 테이블 없음) — V1~V3 마이그레이션은 `docker exec jigeumchamyeo-db psql -U postgres -d jigeumchamyeo`로 수동 적용됨. 근본 원인 미확인, 프로덕션 배포 전 반드시 확인 필요
-- `PetitionApiItemReader`의 ERACO 파라미터: URL에 한글을 직접 쓰면 RestTemplate이 이중 인코딩함 → `{eraco}` URI 템플릿 변수로 분리해야 함
-- `BillSummaryItemReader`는 `BPMBILLSUMMARY` API(`BILL_NO` 조회)를 사용하며 정상 동작함 — 22대 국회 법안 전체 커버. 대량 호출 시 API 차단 방지를 위해 `Thread.sleep(500)` 적용
-- Spring Batch 동일 파라미터로 완료된 Job은 재실행되지 않음 — 재실행 시 `--run.id=숫자` 고유 파라미터를 추가해야 함
+의미 있는 변경마다:
 
-## 미완료 사항 (다음 세션 시 확인)
+1. **관련 docs 문서 동기화**
+   - Entity/스키마 변경 → `docs/DOMAIN_DESIGN.md` 갱신
+   - 패키지 구조·API 변경 → `docs/ARCHITECTURE.md` 갱신
+   - 외부 설정 추가 → `docs/TODO.md` 체크리스트 추가
 
-### API 키 현황
-- `application-secret.yml`에 `bill-api-key`, `petition-api-key`, `legislation-api-key` 모두 동일한 값으로 설정되어 있음
-- 입법예고(`open.lawmaking.go.kr`)는 별도 포털 키가 필요할 수 있음 — 실행 시 인증 오류 발생 여부 확인 필요
+2. **`docs/CHANGELOG.md` 맨 위에 한 줄 추가**
+   ```
+   ## 2026-05-29 — backend
+   - FCM 알림 구현 (D-7/D-3/D-1)
+   ```
 
-### 미구현 패키지
-- `notification/` — KAN-11, FCM D-7/D-3/D-1 알림
-- `agent/` — KAN-12, Agentic Loop (Spring AI + OpenAI Tool Calling)
+---
 
-## Agent 설계 방향 (KAN-12)
+## 7. 프로젝트 규칙 (Key Rules)
 
-### 아키텍처
+- Entity는 반드시 `domain/` 패키지 안에 위치
+- API 응답은 `ApiResponse<T>` 공통 래퍼 사용
+- 공공 API 호출은 `batch/step/reader/` 의 ItemReader에서만
+- pgvector 쿼리는 Native Query (`@Query(nativeQuery = true)`)
+- 환경변수는 절대 하드코딩 금지 — `application-secret.yml` 사용 (git 제외)
+- Batch Job은 멱등성 보장 (중복 실행 시 데이터 중복 없음)
+- 임베딩 모델(추천용)과 EXAONE(에이전트용) 역할 분리 — 추천에 EXAONE 사용 금지
+- ReAct 루프는 `agent/react/` 에서만 구현
+- LLM 모델 호출은 `agent/model/` 에서만
+- Agent Tool 정의는 `agent/tool/` 에 위치
 
-오케스트레이터 에이전트 하나가 유저 요청을 받아 필요한 툴을 선택·실행하는 구조.
-**Spring AI + OpenAI GPT-4o** 사용 — OpenAI 키 이미 확보됨.
+## 8. Gotchas
 
-```
-유저 액션
-    ↓
-GPT-4o 오케스트레이터 (Agentic Loop)
-    ├── 법안 Q&A 툴       → DB 검색 + LLM 답변
-    ├── 캘린더 등록 툴    → iCal(.ics) 생성
-    ├── 법안 요약 툴      → content 3줄 요약
-    ├── 관련 법안 툴      → pgvector 유사도 검색 + 연관성 설명
-    ├── 관련 청원 연결 툴 → 동일 주제 청원 검색
-    └── 법안 비교 툴      → 두 법안 차이점 설명
-```
+- pgvector: DB 초기화 시 `CREATE EXTENSION IF NOT EXISTS vector;` 필요 (V1 마이그레이션 포함)
+- 공공 API 일별 호출 한도 — Batch에서 불필요한 중복 호출 금지
+- FCM 토큰은 앱 재설치 시 변경 — `notification/` 갱신 로직 확인 필요
+- Spring Batch `JobRepository`는 PostgreSQL 스키마 사용 → 테스트는 Testcontainers
+- Batch 수동 실행: `--spring.batch.job.enabled=true` 필수 (없으면 JobLauncherApplicationRunner 미생성)
+- Flyway 자동 실행 안 되는 상황 있음 — 프로덕션 배포 전 `flyway_schema_history` 확인
+- `PetitionApiItemReader` ERACO 파라미터: 한글 직접 쓰면 이중 인코딩 → `{eraco}` URI 템플릿 변수로 분리
+- `BillSummaryItemReader`: 대량 호출 시 `Thread.sleep(500)` 적용
+- Batch 동일 파라미터 완료 Job 재실행: `--run.id=숫자` 고유 파라미터 추가 필요
 
-### 구현 예정 툴 목록
+---
 
-| 툴 | 트리거 | 설명 |
-|----|--------|------|
-| 법안 Q&A | 채팅 입력 | "이 법안이 자영업자에게 미치는 영향은?" |
-| 캘린더 등록 | 법안 클릭 | 마감일 iCal 생성, 앱에서 기기 캘린더에 등록 |
-| 3줄 요약 | 법안 상세 진입 | content 자동 요약 |
-| 관련 법안 | 법안 상세 하단 | 유사 법안 + 연관성 설명 |
-| 관련 청원 연결 | 법안 상세 | 동일 주제 청원 연결 |
-| 법안 비교 | 두 법안 선택 | 두 법안 차이점 설명 |
+## 9. Jira 작업 워크플로우
 
-### 캘린더 등록 구현 방식
-- `GET /api/bills/{billNo}/calendar` → `.ics` 파일 반환
-- 프론트에서 파일 열어 기기 캘린더 등록
-- Google Calendar API 연동은 2차 (OAuth 필요)
-
-### 기술 스택
-- **Spring AI** (`spring-ai-openai-spring-boot-starter`) — Tool Calling 내장 지원
-- **OpenAI GPT-4o** — 오케스트레이터 (키 기확보)
-- `@Tool` 어노테이션으로 툴 등록
-
-## Jira 작업 워크플로우
-
-**Jira 보드**: https://dankook-opensource-project.atlassian.net/jira/software/projects/KAN/boards/1
+**보드**: https://dankook-opensource-project.atlassian.net/jira/software/projects/KAN/boards/1
 **담당자**: parksehyn (dhaprk0429@dankook.ac.kr)
 **Cloud ID**: `2a985da6-fb1b-48d0-8fee-8909b62d0ebb`
 
-### 작업 진행 원칙
+1. 세션 시작 — `project = KAN AND assignee = parksehyn AND status = "해야 할 일"` JQL로 미완료 조회, 이슈 번호 오름차순으로 순서대로 완수
+2. 작업 완수 후 — Jira 이슈를 `완료` 상태로 전환
+3. 모든 작업 완수 시 — 사용자에게 알리고, 신규 이슈 등록 상의 후 진행
 
-1. **세션 시작 시** — Jira에서 `project = KAN AND assignee = parksehyn AND status = "해야 할 일"` JQL로 미완료 작업 목록을 조회하고, 이슈 번호 오름차순으로 하나씩 순서대로 완수한다.
-2. **작업 완수 후** — 해당 Jira 이슈를 `완료` 상태로 전환(transition)한다. 완료 전환을 빠뜨리지 않는다.
-3. **모든 작업 완수 시** — 사용자에게 알리고, 다음에 등록할 새 작업을 함께 상의한 뒤 Jira에 신규 이슈로 등록하는 과정을 거친다. 임의로 새 작업을 만들지 않는다.
+---
 
-### 현재 작업 목록 (parksehyn 배정)
-
-| 이슈 | 제목 | 상태 |
-|------|------|------|
-| [KAN-2](https://dankook-opensource-project.atlassian.net/browse/KAN-2) | 주제 선정 | ✅ 완료 |
-| [KAN-3](https://dankook-opensource-project.atlassian.net/browse/KAN-3) | 서비스 흐름 및 기술 구현 방식 설정 | ✅ 완료 |
-| [KAN-6](https://dankook-opensource-project.atlassian.net/browse/KAN-6) | [BE] 프로젝트 초기 세팅 (Spring Boot, Gradle, Flyway, PostgreSQL) | ✅ 완료 |
-| [KAN-7](https://dankook-opensource-project.atlassian.net/browse/KAN-7) | [BE] 도메인 Entity 및 Repository 설계 (Bill, Petition, UserProfile) | ✅ 완료 |
-| [KAN-8](https://dankook-opensource-project.atlassian.net/browse/KAN-8) | [BE] 공공데이터 수집 Spring Batch 파이프라인 구현 (국회 법안) | ✅ 완료 |
-| [KAN-13](https://dankook-opensource-project.atlassian.net/browse/KAN-13) | [BE] 국민동의청원 수집 Spring Batch 파이프라인 구현 및 검증 | ✅ 완료 |
-| [KAN-14](https://dankook-opensource-project.atlassian.net/browse/KAN-14) | [BE] 입법예고 수집 Spring Batch 파이프라인 구현 및 검증 | 해야 할 일 |
-| [KAN-9](https://dankook-opensource-project.atlassian.net/browse/KAN-9) | [BE] pgvector 기반 개인화 추천 로직 구현 (코사인 유사도 + 마감일 필터) | ✅ 완료 |
-| [KAN-10](https://dankook-opensource-project.atlassian.net/browse/KAN-10) | [BE] REST API 구현 (피드, 법안, 청원, 관심사 설정) | ✅ 완료 |
-| [KAN-11](https://dankook-opensource-project.atlassian.net/browse/KAN-11) | [BE] FCM 마감 임박 푸시 알림 구현 (D-7 / D-3 / D-1) | 해야 할 일 |
-| [KAN-12](https://dankook-opensource-project.atlassian.net/browse/KAN-12) | [BE] Agentic Loop 구현 (Spring AI + OpenAI Tool Calling) | 해야 할 일 |
-
-> 이 표는 작업 완수 시마다 직접 갱신한다. Jira가 항상 최신 상태의 기준이다.
-
-## GitHub 워크플로우
+## 10. GitHub 워크플로우
 
 **원격 저장소**: https://github.com/DKU-OpenSource/BE
 **기본 브랜치**: `main`
 
-### 브랜치 전략
-
-작업할 Jira 이슈가 결정되면 아래 흐름을 반드시 따른다.
-
 ```
-1. main에서 최신 상태로 동기화
-   git checkout main && git pull origin main
-
-2. 이슈 번호 기반 브랜치 생성 (소문자, 하이픈 구분)
-   git checkout -b feature/KAN-{번호}-{짧은-설명}
-   예) feature/KAN-6-initial-setup
-       feature/KAN-7-domain-entity
-       feature/KAN-8-batch-pipeline
-
-3. 작업 진행 및 커밋
-   - 커밋 메시지 형식: [KAN-{번호}] 변경 내용 한 줄 요약
-
-4. 작업 완수 후 브랜치 Push
-   git push origin feature/KAN-{번호}-{짧은-설명}
-
-5. GitHub PR 생성 (main 타겟)
-   - PR 제목: [KAN-{번호}] 이슈 제목
-   - PR 본문: .github/PULL_REQUEST_TEMPLATE.md 템플릿 사용
-   - Assignee: parksehyn
-
-6. PR 생성 후 Jira 이슈를 완료로 전환
+1. git checkout main && git pull origin main
+2. git checkout -b feature/KAN-{번호}-{짧은-설명}
+3. 커밋 형식: [KAN-{번호}] 변경 내용 한 줄 요약
+4. git push origin feature/KAN-{번호}-{짧은-설명}
+5. PR 생성 (main 타겟, PULL_REQUEST_TEMPLATE.md 사용)
+6. PR 생성 후 Jira 이슈 완료 전환
 ```
 
-### 주의사항
+- `main` 직접 커밋 금지 / PR 없이 merge 금지 / 브랜치 1이슈 1개 원칙
 
-- `main` 브랜치에 직접 커밋하지 않는다
-- PR 없이 merge하지 않는다
-- 브랜치는 이슈 1개당 1개를 원칙으로 한다
+---
+
+## 11. 하네스 — 서브에이전트 · 훅 · 스크립트
+
+**서브에이전트 (코드 수정은 부모 Claude만):**
+- `architect` — 설계·플랜 (read-only)
+- `code-reviewer` — diff 리뷰, Claude 자체 분석 (수정 없음)
+- `qa-validator` — 테스트·동작검증 (수정 없음)
+- `doc-guardian` — 작업 전 문서 정합성 스캔 (read-only)
+
+**Hooks (`.claude/hooks/`):**
+- `session-start.sh` — D-day + 직전 journal "다음 할 일" 출력
+- `pre-bash.sh` — 위험 Bash 패턴 차단
+- `post-edit-md.sh` — `.md` 수정 후 front-matter 누락 알림
+- `stop-summary.sh` — 세션 종료 전 CHANGELOG 누락 알림
+- `pre-commit-reminder.sh` — 커밋 전 review/qa 환기 넛지
+
+**Scripts (`.claude/scripts/`):**
+- `ship-precheck.sh` — `/ship` 사전 체크 (테스트·린트·타입·CHANGELOG·git status)
+- `audit.sh` — 문서 신선도·정합성 감사
+
+**슬래시커맨드:** `/daily` `/handoff` `/ship` `/audit` `/codify`
+
+**표준 작업 루프:**
+```
+업무지시 → doc-guardian(모순 체크) → architect(플랜)
+        → 부모(코드 수정) → code-reviewer → qa-validator → 반복
+완료 → 문서 동기화 → /ship → 커밋 → PR
+```
