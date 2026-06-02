@@ -23,4 +23,16 @@ public class ReActResult {
     private String calendarDecisionRaw;       // decide_calendar_tool
     private String recommendedActionsRaw;     // recommend_user_action_tool
     private String missingProfileQuestionRaw; // ask_missing_profile_tool
+
+    /**
+     * extract_key_dates 결과에 실제 등록 가능한 날짜가 있는지 확인.
+     * decide_calendar_registration 실행 전 Executor가 체크한다.
+     */
+    public boolean hasCalendarCandidate() {
+        if (keyDatesRaw == null || keyDatesRaw.isBlank()) return false;
+        return !keyDatesRaw.contains("DATE_VALUE:상시")
+            && !keyDatesRaw.contains("DDAY:미상")
+            && !keyDatesRaw.contains("DDAY:마감")
+            && !keyDatesRaw.contains("DATE_VALUE:확인 불가");
+    }
 }
