@@ -53,6 +53,10 @@ public class ReActLoop {
                 log.warn("[runWithPlan] 중복 Tool 스킵 — {}", toolName);
                 continue;
             }
+            if (toolName.equals("decide_calendar_registration") && !result.hasCalendarCandidate()) {
+                log.debug("[runWithPlan] 캘린더 후보 없음 — decide_calendar_registration skip");
+                continue;
+            }
             AgentTool tool = toolMap.get(toolName);
             if (tool == null) {
                 log.warn("[runWithPlan] 알 수 없는 Tool 스킵 — {}", toolName);
