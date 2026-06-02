@@ -3,15 +3,8 @@ package com.dku.opensource.be.api;
 import com.dku.opensource.be.agent.AgentService;
 import com.dku.opensource.be.agent.tool.*;
 import com.dku.opensource.be.common.ApiResponse;
-import com.dku.opensource.be.domain.bill.Bill;
-import com.dku.opensource.be.domain.bill.BillRepository;
 import com.dku.opensource.be.domain.calendar.UserCalendarEvent;
 import com.dku.opensource.be.domain.calendar.UserCalendarEventRepository;
-import com.dku.opensource.be.domain.legislation.LegislationNotice;
-import com.dku.opensource.be.domain.legislation.LegislationNoticeRepository;
-import com.dku.opensource.be.domain.petition.Petition;
-import com.dku.opensource.be.domain.petition.PetitionRepository;
-import com.dku.opensource.be.domain.user.UserProfileRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -47,10 +40,6 @@ public class EventAgentController {
     private final GenerateOpinionDraftTool generateOpinionDraftTool;
     private final DecideCalendarTool decideCalendarTool;
     private final UserCalendarEventRepository calendarEventRepository;
-    private final UserProfileRepository userProfileRepository;
-    private final BillRepository billRepository;
-    private final PetitionRepository petitionRepository;
-    private final LegislationNoticeRepository legislationNoticeRepository;
 
     // ── 유사 이슈 ────────────────────────────────────────────
 
@@ -232,58 +221,7 @@ public class EventAgentController {
     }
 
     private AgentContext buildContext(String issueId, String issueType, String userId) {
-        if (issueType == null || issueType.isBlank()) {
-            throw new IllegalArgumentException("issueType은 필수입니다.");
-        }
-        AgentContext.AgentContextBuilder builder = switch (issueType.toLowerCase()) {
-            case "bill" -> {
-                Bill bill = billRepository.findByBillNo(issueId)
-                        .orElseThrow(() -> new IllegalArgumentException("법안 없음: " + issueId));
-                String dl = bill.getDeadline() != null ? bill.getDeadline().toString() : null;
-                yield AgentContext.builder()
-                        .issueId(issueId).issueType("bill").userId(userId)
-                        .issueTitle(bill.getTitle()).issueContent(bill.getContent())
-                        .deadline(dl).issueSummary(truncate(bill.getContent(), bill.getTitle()))
-                        .deadlineType(dl != null ? "deadline" : "always_open");
-            }
-            case "petition" -> {
-                Petition petition = petitionRepository.findByPetitionNo(issueId)
-                        .orElseThrow(() -> new IllegalArgumentException("청원 없음: " + issueId));
-                String dl = petition.getDeadline() != null ? petition.getDeadline().toString() : null;
-                yield AgentContext.builder()
-                        .issueId(issueId).issueType("petition").userId(userId)
-                        .issueTitle(petition.getTitle()).issueContent(petition.getContent())
-                        .deadline(dl).issueSummary(truncate(petition.getContent(), petition.getTitle()))
-                        .deadlineType(dl != null ? "deadline" : "always_open");
-            }
-            case "legislation" -> {
-                LegislationNotice notice = legislationNoticeRepository.findByBillId(issueId)
-                        .orElseThrow(() -> new IllegalArgumentException("입법예고 없음: " + issueId));
-                String dl = notice.getDeadline() != null ? notice.getDeadline().toString() : null;
-                yield AgentContext.builder()
-                        .issueId(issueId).issueType("legislation").userId(userId)
-                        .issueTitle(notice.getTitle()).issueContent(null)
-                        .deadline(dl).issueSummary(notice.getTitle())
-                        .deadlineType(dl != null ? "deadline" : "always_open");
-            }
-            default -> throw new IllegalArgumentException("알 수 없는 issueType: " + issueType);
-        };
-
-        userProfileRepository.findByUserId(userId).ifPresentOrElse(
-            p -> {
-                builder.userAge(p.getAge()).userOccupation(p.getOccupation());
-                p.getInterestTags().forEach(builder::userInterest);
-            },
-            () -> {}
-        );
-
-        return builder.build();
-    }
-
-    private String truncate(String content, String title) {
-        if (content != null && !content.isBlank())
-            return content.length() > 500 ? content.substring(0, 500) + "..." : content;
-        return title != null ? title : "";
+        return agentService.buildContext(issueId, issueType, userId, null);
     }
 
     private Optional<String> extractLine(String text, String prefix) {

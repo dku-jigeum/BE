@@ -7,6 +7,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
@@ -38,13 +39,17 @@ public class ReActLoop {
     }
 
     public ReActResult run(String goal, AgentContext ctx) {
+        return run(goal, ctx, maxIterations);
+    }
+
+    public ReActResult run(String goal, AgentContext ctx, int iterLimit) {
         String systemPrompt = buildSystemPrompt();
         StringBuilder history = new StringBuilder();
         history.append("Goal: ").append(goal).append("\n\n");
 
         ReActResult result = new ReActResult();
 
-        for (int i = 0; i < maxIterations; i++) {
+        for (int i = 0; i < iterLimit; i++) {
             String response = exaoneClient.complete(systemPrompt, history.toString());
             log.debug("[ReAct iter {}] response:\n{}", i, response);
 
@@ -67,13 +72,14 @@ public class ReActLoop {
                 break;
             }
 
-            String toolName = extractAfter(response, "Action:").split("\n")[0].trim();
+            String toolName = Arrays.stream(extractAfter(response, "Action:").split("\n"))
+                    .map(String::trim).filter(s -> !s.isBlank()).findFirst().orElse("");
             String toolInput = response.contains("Action Input:")
                     ? extractAfter(response, "Action Input:").split("\n")[0].trim()
                     : "";
 
             // history에는 Thought + Action + Action Input 까지만 추가 (가짜 Observation 제외)
-            String historyEntry = extractUpToActionInput(response, toolInput);
+            String historyEntry = extractUpToActionInput(response);
             history.append(historyEntry).append("\n");
 
             AgentTool tool = toolMap.get(toolName);
@@ -120,7 +126,10 @@ public class ReActLoop {
             }
             case "decide_calendar_registration"  -> {
                 result.setCalendarDecisionRaw(observation);
-                result.setCalendarSuggested(observation.contains("SUGGEST:true"));
+                result.setCalendarSuggested(Arrays.stream(observation.split("\n"))
+                        .filter(l -> l.startsWith("SUGGEST:"))
+                        .map(l -> l.substring("SUGGEST:".length()).trim())
+                        .anyMatch("true"::equals));
             }
             case "recommend_user_action"         -> result.setRecommendedActionsRaw(observation);
             case "ask_missing_profile_question"  -> result.setMissingProfileQuestionRaw(observation);
@@ -168,12 +177,10 @@ public class ReActLoop {
     }
 
     // Thought + Action + Action Input 까지만 추출 (모델이 뒤에 붙인 가짜 Observation 제거)
-    private String extractUpToActionInput(String response, String toolInput) {
+    private String extractUpToActionInput(String response) {
         if (!response.contains("Action Input:")) return response;
         int inputIdx = response.indexOf("Action Input:");
-        int endIdx = inputIdx + "Action Input:".length() + toolInput.length() + 5;
-        // 줄바꿈 기준으로 Action Input 줄 끝까지만
         int newlineIdx = response.indexOf("\n", inputIdx);
-        return response.substring(0, newlineIdx > 0 ? newlineIdx : Math.min(endIdx, response.length()));
+        return response.substring(0, newlineIdx > 0 ? newlineIdx : response.length());
     }
 }

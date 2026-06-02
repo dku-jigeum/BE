@@ -37,17 +37,17 @@ public class AskMissingProfileTool implements AgentTool {
             case "occupation" -> """
                     NEED_INFO:true
                     QUESTION:이 정책의 영향을 더 정확히 분석하려면 현재 직업을 알려주세요.
-                    OPTIONS:직장인,학생,자영업자,무직,답변하지 않음
+                    OPTIONS:직장인|학생|자영업자|무직|답변하지 않음
                     REASON:직업에 따라 법안의 영향 범위가 달라질 수 있습니다.""";
             case "age" -> """
                     NEED_INFO:true
                     QUESTION:연령대를 알려주시면 더 정확한 분석이 가능해요.
-                    OPTIONS:10대,20대,30대,40대 이상,답변하지 않음
+                    OPTIONS:10대|20대|30대|40대 이상|답변하지 않음
                     REASON:연령에 따라 정책 혜택과 의무가 다를 수 있습니다.""";
             case "interests" -> """
                     NEED_INFO:true
                     QUESTION:어떤 분야에 관심이 있으신가요?
-                    OPTIONS:환경·에너지,복지·의료,교육,경제·일자리,답변하지 않음
+                    OPTIONS:환경·에너지|복지·의료|교육|경제·일자리|답변하지 않음
                     REASON:관심 분야를 알면 이슈와의 관련성을 더 잘 분석할 수 있어요.""";
             default -> "NEED_INFO:false\nQUESTION:\nOPTIONS:\nREASON:";
         };

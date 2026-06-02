@@ -113,7 +113,7 @@ public class AgentService {
         String goal = buildGoalFromTools(ctx, plan.selectedTools());
 
         log.info("[Agent] 분석 시작 — selectedTools={}", plan.selectedTools());
-        ReActResult result = reActLoop.run(goal, ctx);
+        ReActResult result = reActLoop.run(goal, ctx, plan.selectedTools().size() + 2);
         log.info("[Agent] 분석 완료 — calendarSuggested={}", result.isCalendarSuggested());
 
         return buildDetailResponse(result, ctx);
@@ -121,8 +121,8 @@ public class AgentService {
 
     // ─── Context 빌드 ────────────────────────────────────────
 
-    private AgentContext buildContext(String issueId, String issueType, String userId,
-                                      RecommendationInput rec) {
+    public AgentContext buildContext(String issueId, String issueType, String userId,
+                                     RecommendationInput rec) {
         if (issueType == null || issueType.isBlank()) {
             throw new IllegalArgumentException("issueType은 필수입니다.");
         }
@@ -293,7 +293,10 @@ public class AgentService {
         String type = extractLine(raw, "IMPACT_TYPE:").orElse("unknown");
         String summary = extractLine(raw, "SUMMARY:").orElse(result.getImpact() != null ? result.getImpact() : "");
         List<String> effects = extractLine(raw, "EFFECTS:")
-                .map(e -> Arrays.asList(e.split("##"))).orElse(List.of());
+                .map(e -> Arrays.stream(e.split("##"))
+                        .map(String::trim).filter(s -> !s.isBlank())
+                        .collect(Collectors.toList()))
+                .orElse(List.of());
         String uncertainty = extractLine(raw, "UNCERTAINTY:").orElse("");
         return new UserImpactCard("나에게 미치는 영향", level, type, summary, effects, uncertainty);
     }
@@ -321,7 +324,7 @@ public class AgentService {
         if (raw == null || raw.isBlank()) {
             return new CalendarSuggestion(false, "마감일 정보 없음", "", "", "");
         }
-        boolean suggest = raw.contains("SUGGEST:true");
+        boolean suggest = extractLine(raw, "SUGGEST:").map("true"::equals).orElse(false);
         String reason = extractLine(raw, "REASON:").orElse("");
         String title = extractLine(raw, "TITLE:").orElse("");
         String date = extractLine(raw, "DATE:").orElse("");
@@ -358,7 +361,7 @@ public class AgentService {
         String question = extractLine(raw, "QUESTION:").orElse("");
         String optionsStr = extractLine(raw, "OPTIONS:").orElse("");
         List<String> options = optionsStr.isBlank() ? List.of()
-                : Arrays.asList(optionsStr.split(","));
+                : Arrays.asList(optionsStr.split("\\|"));
         String reason = extractLine(raw, "REASON:").orElse("");
         return new MissingProfileQuestionCard(true, question, options, reason);
     }

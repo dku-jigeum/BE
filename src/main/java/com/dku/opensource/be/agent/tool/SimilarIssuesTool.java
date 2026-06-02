@@ -41,14 +41,14 @@ public class SimilarIssuesTool implements AgentTool {
 
             List<SimilarIssue> results = new ArrayList<>();
 
-            billRepository.findByEmbeddingSimilarityAfterDeadline(queryVector, 3)
+            billRepository.findByEmbeddingSimilarityAfterDeadline(queryVector, 4)
                     .stream()
                     .filter(b -> !b.getBillNo().equals(ctx.getIssueId()))
                     .limit(2)
                     .forEach(b -> results.add(new SimilarIssue(b.getBillNo(), "bill", b.getTitle(),
                             b.getDeadline() != null ? b.getDeadline().toString() : null)));
 
-            petitionRepository.findByEmbeddingSimilarityAfterDeadline(queryVector, 2)
+            petitionRepository.findByEmbeddingSimilarityAfterDeadline(queryVector, 3)
                     .stream()
                     .filter(p -> !p.getPetitionNo().equals(ctx.getIssueId()))
                     .limit(1)
