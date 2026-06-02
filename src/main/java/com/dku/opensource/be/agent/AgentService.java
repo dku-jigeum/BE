@@ -18,6 +18,7 @@ import org.springframework.stereotype.Service;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -25,6 +26,17 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 public class AgentService {
+
+    // extract_key_dates → decide_calendar_registration 순서 보장 포함
+    private static final List<String> CANONICAL_ORDER = List.of(
+            "summarize_event",
+            "explain_recommendation_reason",
+            "analyze_user_impact",
+            "extract_key_dates",
+            "decide_calendar_registration",
+            "recommend_user_action",
+            "ask_missing_profile_question"
+    );
 
     private final ReActLoop reActLoop;
     private final AgentPlannerService agentPlannerService;
@@ -110,10 +122,10 @@ public class AgentService {
 
         log.info("[Agent] 플래닝 시작 — issueId={}, type={}, user={}", issueId, issueType, userId);
         AgentPlannerService.PlannerResult plan = agentPlannerService.plan(ctx);
-        String goal = buildGoalFromTools(ctx, plan.selectedTools());
 
-        log.info("[Agent] 분석 시작 — selectedTools={}", plan.selectedTools());
-        ReActResult result = reActLoop.run(goal, ctx, plan.selectedTools().size() + 2);
+        List<String> orderedTools = sortByCanonicalOrder(plan.selectedTools());
+        log.info("[Agent] 분석 시작 — orderedTools={}", orderedTools);
+        ReActResult result = reActLoop.runWithPlan(orderedTools, ctx);
         log.info("[Agent] 분석 완료 — calendarSuggested={}", result.isCalendarSuggested());
 
         return buildDetailResponse(result, ctx);
@@ -230,12 +242,13 @@ public class AgentService {
         builder.profileQuality(quality);
     }
 
-    private String buildGoalFromTools(AgentContext ctx, List<String> selectedTools) {
-        StringBuilder sb = new StringBuilder("이슈 '").append(ctx.getIssueTitle()).append("'를 다음 순서로 분석하세요:\n");
-        for (int i = 0; i < selectedTools.size(); i++) {
-            sb.append(i + 1).append(". ").append(selectedTools.get(i)).append("\n");
-        }
-        return sb.toString().trim();
+    private List<String> sortByCanonicalOrder(List<String> tools) {
+        return tools.stream()
+                .sorted(Comparator.comparingInt(t -> {
+                    int idx = CANONICAL_ORDER.indexOf(t);
+                    return idx < 0 ? CANONICAL_ORDER.size() : idx;
+                }))
+                .collect(Collectors.toList());
     }
 
     // ─── 응답 빌드 ────────────────────────────────────────────

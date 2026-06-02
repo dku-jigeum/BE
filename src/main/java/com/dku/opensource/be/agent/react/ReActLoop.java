@@ -8,8 +8,10 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.util.Arrays;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -36,6 +38,38 @@ public class ReActLoop {
     public ReActLoop(ExaoneClient exaoneClient, List<AgentTool> tools) {
         this.exaoneClient = exaoneClient;
         this.toolMap = tools.stream().collect(Collectors.toMap(AgentTool::name, Function.identity()));
+    }
+
+    /**
+     * Planner selectedTools를 canonical order로 순차 실행한다.
+     * 중복 Tool은 한 번만 실행하고, 알 수 없는 Tool은 건너뛴다.
+     */
+    public ReActResult runWithPlan(List<String> selectedTools, AgentContext ctx) {
+        ReActResult result = new ReActResult();
+        Set<String> executed = new LinkedHashSet<>();
+
+        for (String toolName : selectedTools) {
+            if (executed.contains(toolName)) {
+                log.warn("[runWithPlan] 중복 Tool 스킵 — {}", toolName);
+                continue;
+            }
+            AgentTool tool = toolMap.get(toolName);
+            if (tool == null) {
+                log.warn("[runWithPlan] 알 수 없는 Tool 스킵 — {}", toolName);
+                continue;
+            }
+            try {
+                String observation = tool.run("", ctx);
+                collectToolResult(result, toolName, observation, ctx);
+                log.debug("[runWithPlan] tool={} 완료", toolName);
+            } catch (Exception e) {
+                log.error("[runWithPlan] Tool 실행 실패 — tool={}, error={}", toolName, e.getMessage());
+            }
+            executed.add(toolName);
+        }
+
+        result.setFinalAnswer("분석 완료.");
+        return result;
     }
 
     public ReActResult run(String goal, AgentContext ctx) {
