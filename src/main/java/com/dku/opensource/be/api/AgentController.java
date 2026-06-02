@@ -6,8 +6,14 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 /**
- * POST /api/agent/analyze — 이슈 AI 분석 (ReAct + EXAONE)
+ * POST /api/agent/analyze — 상세페이지 AI 맞춤 분석 (ReAct + EXAONE)
+ *
+ * 피드에서 진입 시 matchedKeywords, matchedCategories, similarityScore 를 함께 전달하면
+ * '왜 추천됐나요?' 카드 품질이 높아진다.
+ * 직접 진입 시에는 해당 필드를 생략해도 된다.
  */
 @RestController
 @RequestMapping("/api/agent")
@@ -17,11 +23,25 @@ public class AgentController {
     private final AgentService agentService;
 
     @PostMapping("/analyze")
-    public ApiResponse<AgentService.AnalyzeResponse> analyze(
+    public ApiResponse<AgentService.DetailPageAnalysisResponse> analyze(
             @AuthenticationPrincipal String userId,
             @RequestBody AnalyzeRequest req) {
-        return ApiResponse.success(agentService.analyze(req.issueId(), req.issueType(), userId));
+
+        AgentService.RecommendationInput rec = new AgentService.RecommendationInput(
+                req.similarityScore(),
+                req.matchedKeywords(),
+                req.matchedCategories()
+        );
+
+        return ApiResponse.success(agentService.analyze(req.issueId(), req.issueType(), userId, rec));
     }
 
-    record AnalyzeRequest(String issueId, String issueType) {}
+    record AnalyzeRequest(
+            String issueId,
+            String issueType,
+            // 추천 근거 (optional — 피드 진입 시만 전달)
+            Double similarityScore,
+            List<String> matchedKeywords,
+            List<String> matchedCategories
+    ) {}
 }

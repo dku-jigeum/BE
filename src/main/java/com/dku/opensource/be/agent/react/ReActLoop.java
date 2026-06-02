@@ -102,12 +102,15 @@ public class ReActLoop {
 
     private void collectToolResult(ReActResult result, String toolName, String observation, AgentContext ctx) {
         switch (toolName) {
-            case "summarize_tool" -> result.setSummary(observation);
-            case "impact_analysis_tool" -> result.setImpact(observation);
-            case "similar_issues_tool" -> result.setSimilarIssuesRaw(observation);
-            case "calendar_tool" -> {
-                result.setCalendarSuggested(observation.contains("CALENDAR_SUGGEST:true"));
-                // D-day 숫자 추출
+            case "summarize_event"               -> result.setSummary(observation);
+            case "analyze_user_impact"           -> {
+                result.setImpact(observation);
+                result.setImpactStructuredRaw(observation);
+            }
+            case "find_similar_events"           -> result.setSimilarIssuesRaw(observation);
+            case "explain_recommendation_reason" -> result.setRecommendationReasonRaw(observation);
+            case "extract_key_dates"             -> {
+                result.setKeyDatesRaw(observation);
                 if (observation.contains("D-")) {
                     try {
                         String dPart = observation.substring(observation.indexOf("D-") + 2);
@@ -115,6 +118,16 @@ public class ReActLoop {
                     } catch (Exception ignored) {}
                 }
             }
+            case "decide_calendar_registration"  -> {
+                result.setCalendarDecisionRaw(observation);
+                result.setCalendarSuggested(observation.contains("SUGGEST:true"));
+            }
+            case "recommend_user_action"         -> result.setRecommendedActionsRaw(observation);
+            case "ask_missing_profile_question"  -> result.setMissingProfileQuestionRaw(observation);
+            case "compare_with_similar_events"   -> result.setSimilarIssuesRaw(
+                    result.getSimilarIssuesRaw() != null
+                            ? result.getSimilarIssuesRaw() + "\n" + observation
+                            : observation);
         }
     }
 
@@ -124,8 +137,13 @@ public class ReActLoop {
                 tools.append("- ").append(t.name()).append(": ").append(t.description()).append("\n"));
 
         return """
-                당신은 법안·청원·입법예고를 분석하는 AI 에이전트입니다.
-                주어진 Goal을 달성하기 위해 순서대로 Tool을 사용하세요.
+                당신은 개인 맞춤형 정책 상세페이지 분석 AI 에이전트입니다.
+                주어진 Goal에 명시된 순서대로 Tool을 사용해 분석을 완료하세요.
+
+                규칙:
+                - register_calendar_event 와 generate_opinion_draft_tool 은 사용자 승인 전에 실행하지 마세요.
+                - 사용자 프로필이 부족한 경우 ask_missing_profile_tool 을 선택적으로 실행하세요.
+                - 법률 결론을 단정하지 마세요.
 
                 사용 가능한 Tool:
                 """ + tools + """
@@ -137,7 +155,7 @@ public class ReActLoop {
 
                 Tool 결과(Observation)를 받은 후 다음 Action을 결정하세요.
                 모든 Tool 실행이 완료되면:
-                Final Answer: (최종 분석 완료 메시지)
+                Final Answer: 분석 완료
 
                 한국어로 응답하세요.
                 """;

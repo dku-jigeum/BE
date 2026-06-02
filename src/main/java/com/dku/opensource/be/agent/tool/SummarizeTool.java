@@ -13,7 +13,7 @@ public class SummarizeTool implements AgentTool {
 
     private final ExaoneClient exaoneClient;
 
-    @Override public String name() { return "summarize_tool"; }
+    @Override public String name() { return "summarize_event"; }
 
     @Override public String description() {
         return "법안·청원·입법예고의 핵심 내용을 3줄로 요약합니다. 사용자가 빠르게 이슈를 파악할 수 있게 합니다.";
