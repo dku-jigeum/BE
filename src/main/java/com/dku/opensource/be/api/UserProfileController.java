@@ -1,5 +1,6 @@
 package com.dku.opensource.be.api;
 
+import lombok.extern.slf4j.Slf4j;
 import com.dku.opensource.be.common.ApiResponse;
 import com.dku.opensource.be.domain.user.UserProfile;
 import com.dku.opensource.be.domain.user.UserProfileRepository;
@@ -13,6 +14,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/users")
 @RequiredArgsConstructor
@@ -36,7 +38,9 @@ public class UserProfileController {
         }
         profile.updateProfile(req.age(), req.occupation());
         userProfileRepository.save(profile);
-        recommendationService.updateUserEmbedding(userId);
+        try { recommendationService.updateUserEmbedding(userId); } catch (Exception e) {
+            log.warn("임베딩 업데이트 실패 (프로필은 저장됨): {}", e.getMessage());
+        }
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(ProfileResponse.from(profile)));
     }
 
@@ -53,7 +57,9 @@ public class UserProfileController {
         }
         profile.updateProfile(req.age(), req.occupation());
         userProfileRepository.save(profile);
-        recommendationService.updateUserEmbedding(userId);
+        try { recommendationService.updateUserEmbedding(userId); } catch (Exception e) {
+            log.warn("임베딩 업데이트 실패 (프로필은 저장됨): {}", e.getMessage());
+        }
         return ResponseEntity.ok(ApiResponse.success(ProfileResponse.from(profile)));
     }
 

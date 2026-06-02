@@ -1,6 +1,10 @@
 server:
   port: 8082
 
+logging:
+  level:
+    com.dku.opensource.be.agent: DEBUG
+
 spring:
   application:
     name: be
@@ -13,7 +17,7 @@ spring:
     driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:
-      ddl-auto: validate
+      ddl-auto: none
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
@@ -29,10 +33,20 @@ spring:
       initialize-schema: always
 
 public-data:
-  content-enrich-limit: 200
+  content-enrich-limit: 100
 
 openai:
   api-key: ${OPENAI_API_KEY:}
+
+# AI 에이전트 설정 (EXAONE 3.5 또는 OpenAI-compatible)
+agent:
+  model:
+    base-url: ${AGENT_BASE_URL:https://api.openai.com/v1}
+    api-key: ${AGENT_API_KEY:${OPENAI_API_KEY:}}
+    model-name: ${AGENT_MODEL_NAME:gpt-4o-mini}
+    max-tokens: 1024
+  react:
+    max-iterations: 6
 
 jwt:
   secret: ${JWT_SECRET:}

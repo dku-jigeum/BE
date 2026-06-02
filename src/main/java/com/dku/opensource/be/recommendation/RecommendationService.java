@@ -30,8 +30,8 @@ public class RecommendationService {
     private final LegislationNoticeRepository legislationNoticeRepository;
     private final UserProfileRepository userProfileRepository;
 
-    public record RecommendedItem(String id, String type, String title, String deadline,
-                                  Integer participantCount, Integer viewCount, String source) {}
+    public record RecommendedItem(String id, String type, String title, String content, String linkUrl,
+                                  String deadline, Integer participantCount, Integer viewCount, String source) {}
 
     @Transactional
     public void updateUserEmbedding(String userId) {
@@ -64,11 +64,10 @@ public class RecommendationService {
     }
 
     public List<RecommendedItem> getRecommendedFeed(String userId, int limit) {
-        UserProfile profile = userProfileRepository.findByUserId(userId)
-                .orElseThrow(() -> new IllegalArgumentException("User not found: " + userId));
+        UserProfile profile = userProfileRepository.findByUserId(userId).orElse(null);
 
-        if (profile.getEmbeddingVector() == null) {
-            log.info("유저 {} 임베딩 벡터 없음 — 트렌딩 폴백", userId);
+        if (profile == null || profile.getEmbeddingVector() == null) {
+            log.info("유저 {} 프로필/임베딩 없음 — 트렌딩 폴백", userId);
             return buildTrendingFeed(limit);
         }
 
@@ -81,8 +80,15 @@ public class RecommendationService {
         String vec = profile.getEmbeddingVector();
 
         List<RecommendedItem> personalized = new ArrayList<>();
-        billRepository.findByEmbeddingSimilarityAfterDeadline(vec, billSlot)
-                .forEach(b -> personalized.add(fromBill(b, "personalized")));
+
+        List<Bill> personalizedBills = billRepository.findByEmbeddingSimilarityAfterDeadline(vec, billSlot);
+        if (personalizedBills.isEmpty()) {
+            billRepository.findTop20ByOrderByViewCountDesc().stream().limit(billSlot)
+                    .forEach(b -> personalized.add(fromBill(b, "trending")));
+        } else {
+            personalizedBills.forEach(b -> personalized.add(fromBill(b, "personalized")));
+        }
+
         petitionRepository.findByEmbeddingSimilarityAfterDeadline(vec, petitionSlot)
                 .forEach(p -> personalized.add(fromPetition(p, "personalized")));
         legislationNoticeRepository.findByEmbeddingSimilarityAfterDeadline(vec, legislationSlot)
@@ -130,20 +136,23 @@ public class RecommendationService {
         return items;
     }
 
+    private static final String PETITION_URL = "https://petitions.assembly.go.kr/status/registered/";
+
     private RecommendedItem fromBill(Bill b, String source) {
-        return new RecommendedItem(b.getBillNo(), "bill", b.getTitle(),
+        return new RecommendedItem(b.getBillNo(), "bill", b.getTitle(), b.getContent(), b.getLinkUrl(),
                 b.getDeadline() != null ? b.getDeadline().toString() : null,
                 null, b.getViewCount(), source);
     }
 
     private RecommendedItem fromPetition(Petition p, String source) {
-        return new RecommendedItem(p.getPetitionNo(), "petition", p.getTitle(),
+        return new RecommendedItem(p.getPetitionNo(), "petition", p.getTitle(), p.getContent(),
+                PETITION_URL + p.getPetitionNo(),
                 p.getDeadline() != null ? p.getDeadline().toString() : null,
                 p.getParticipantCount(), null, source);
     }
 
     private RecommendedItem fromLegislation(LegislationNotice l, String source) {
-        return new RecommendedItem(l.getBillId(), "legislation", l.getTitle(),
+        return new RecommendedItem(l.getBillId(), "legislation", l.getTitle(), null, null,
                 l.getDeadline() != null ? l.getDeadline().toString() : null,
                 null, null, source);
     }

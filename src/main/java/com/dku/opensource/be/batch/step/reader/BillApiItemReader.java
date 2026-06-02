@@ -29,7 +29,10 @@ public class BillApiItemReader implements ItemReader<BillApiDto> {
     private final String apiKey;
     private final int pageSize;
 
+    private static final int MAX_ITEMS = 100;
+
     private int currentPage = 1;
+    private int totalFetched = 0;
     private final Deque<BillApiDto> buffer = new ArrayDeque<>();
     private boolean exhausted = false;
 
@@ -45,10 +48,13 @@ public class BillApiItemReader implements ItemReader<BillApiDto> {
 
     @Override
     public BillApiDto read() {
+        if (totalFetched >= MAX_ITEMS) return null;
         if (buffer.isEmpty() && !exhausted) {
             fetch();
         }
-        return buffer.isEmpty() ? null : buffer.poll();
+        if (buffer.isEmpty()) return null;
+        totalFetched++;
+        return buffer.poll();
     }
 
     @SuppressWarnings("unchecked")
