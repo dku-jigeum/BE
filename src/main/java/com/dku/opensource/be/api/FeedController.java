@@ -24,11 +24,11 @@ public class FeedController {
                         .stream().map(FeedItem::from).toList());
     }
 
-    record FeedItem(String id, String type, String title, String deadline,
-                    Integer participantCount, Integer viewCount, String source) {
+    record FeedItem(String id, String type, String title, String content, String linkUrl,
+                    String deadline, Integer participantCount, Integer viewCount, String source) {
         static FeedItem from(RecommendationService.RecommendedItem r) {
-            return new FeedItem(r.id(), r.type(), r.title(), r.deadline(),
-                    r.participantCount(), r.viewCount(), r.source());
+            return new FeedItem(r.id(), r.type(), r.title(), r.content(), r.linkUrl(),
+                    r.deadline(), r.participantCount(), r.viewCount(), r.source());
         }
     }
 }

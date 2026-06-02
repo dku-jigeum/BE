@@ -23,7 +23,8 @@ public class BillItemProcessor implements ItemProcessor<BillApiDto, Bill> {
         String committee = normalize(dto.getCommittee());
         LocalDate deadline = parseDate(dto.getProcDt());
 
-        return Bill.of(dto.getBillNo().trim(), title, committee.isBlank() ? null : committee, null, deadline);
+        return Bill.of(dto.getBillNo().trim(), title, committee.isBlank() ? null : committee, null,
+                normalize(dto.getLinkUrl()), deadline);
     }
 
     private String normalize(String value) {

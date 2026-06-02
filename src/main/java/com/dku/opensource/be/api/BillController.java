@@ -43,18 +43,18 @@ public class BillController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
-    record BillSummary(String billNo, String title, String committee, String deadline, int viewCount) {
+    record BillSummary(String billNo, String title, String committee, String deadline, int viewCount, String linkUrl) {
         static BillSummary from(Bill b) {
             return new BillSummary(b.getBillNo(), b.getTitle(), b.getCommittee(),
-                    b.getDeadline() != null ? b.getDeadline().toString() : null, b.getViewCount());
+                    b.getDeadline() != null ? b.getDeadline().toString() : null, b.getViewCount(), b.getLinkUrl());
         }
     }
 
     record BillDetail(String billNo, String title, String committee, String content,
-                      String deadline, int viewCount) {
+                      String deadline, int viewCount, String linkUrl) {
         static BillDetail from(Bill b) {
             return new BillDetail(b.getBillNo(), b.getTitle(), b.getCommittee(), b.getContent(),
-                    b.getDeadline() != null ? b.getDeadline().toString() : null, b.getViewCount());
+                    b.getDeadline() != null ? b.getDeadline().toString() : null, b.getViewCount(), b.getLinkUrl());
         }
     }
 }

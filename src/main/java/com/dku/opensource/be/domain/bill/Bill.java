@@ -30,6 +30,9 @@ public class Bill {
     @Column(columnDefinition = "TEXT")
     private String content;
 
+    @Column(length = 500)
+    private String linkUrl;
+
     private LocalDate deadline;
 
     // pgvector: 배치 INSERT 시 제외, 추천 서비스에서 native query로만 업데이트
@@ -42,12 +45,13 @@ public class Bill {
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
 
-    public static Bill of(String billNo, String title, String committee, String content, LocalDate deadline) {
+    public static Bill of(String billNo, String title, String committee, String content, String linkUrl, LocalDate deadline) {
         Bill bill = new Bill();
         bill.billNo = billNo;
         bill.title = title;
         bill.committee = committee;
         bill.content = content;
+        bill.linkUrl = linkUrl;
         bill.deadline = deadline;
         return bill;
     }
