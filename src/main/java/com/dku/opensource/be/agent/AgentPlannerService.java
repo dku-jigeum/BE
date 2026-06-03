@@ -201,6 +201,12 @@ public class AgentPlannerService {
             // selectedTools가 비어 있으면 fallback
             if (selected.isEmpty()) return fallbackPlan(ctx);
 
+            // extract_key_dates가 선택됐으면 decide_calendar_registration도 반드시 포함
+            if (selected.contains("extract_key_dates") && !selected.contains("decide_calendar_registration")) {
+                selected.add("decide_calendar_registration");
+                skipped.removeIf(s -> s.tool().equals("decide_calendar_registration"));
+            }
+
             return new PlannerResult(relevanceLevel, reason, selected, skipped, confidence);
 
         } catch (Exception e) {
