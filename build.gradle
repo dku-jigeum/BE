@@ -38,6 +38,9 @@ dependencies {
 	// Spring Batch
 	implementation 'org.springframework.boot:spring-boot-starter-batch'
 
+	// HTML 파싱 (입법예고 본문 스크래핑)
+	implementation 'org.jsoup:jsoup:1.17.2'
+
 	// Lombok
 	compileOnly 'org.projectlombok:lombok'
 	annotationProcessor 'org.projectlombok:lombok'

@@ -8,6 +8,8 @@ import org.springframework.batch.infrastructure.item.Chunk;
 import org.springframework.batch.infrastructure.item.ItemWriter;
 import org.springframework.stereotype.Component;
 
+import java.util.concurrent.atomic.AtomicInteger;
+
 @Slf4j
 @Component
 @RequiredArgsConstructor
@@ -17,13 +19,23 @@ public class LegislationItemWriter implements ItemWriter<LegislationNotice> {
 
     @Override
     public void write(Chunk<? extends LegislationNotice> chunk) {
-        int saved = 0;
+        AtomicInteger saved = new AtomicInteger();
+        AtomicInteger updated = new AtomicInteger();
         for (LegislationNotice notice : chunk) {
-            if (!legislationNoticeRepository.existsByBillId(notice.getBillId())) {
-                legislationNoticeRepository.save(notice);
-                saved++;
-            }
+            legislationNoticeRepository.findByBillId(notice.getBillId()).ifPresentOrElse(
+                existing -> {
+                    if (existing.getContent() == null && notice.getContent() != null) {
+                        existing.updateContent(notice.getContent());
+                        legislationNoticeRepository.save(existing);
+                        updated.incrementAndGet();
+                    }
+                },
+                () -> {
+                    legislationNoticeRepository.save(notice);
+                    saved.incrementAndGet();
+                }
+            );
         }
-        log.debug("입법예고 저장: {}건 (중복 제외)", saved);
+        log.info("입법예고 처리: {}건 신규, {}건 content 업데이트", saved.get(), updated.get());
     }
 }

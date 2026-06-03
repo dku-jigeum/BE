@@ -171,9 +171,9 @@ public class AgentService {
                 yield AgentContext.builder()
                         .issueId(issueId).issueType("legislation").userId(userId)
                         .issueTitle(notice.getTitle())
-                        .issueContent(null)
+                        .issueContent(notice.getContent())
                         .deadline(deadline)
-                        .issueSummary(notice.getTitle())
+                        .issueSummary(truncate(notice.getContent(), notice.getTitle()))
                         .deadlineType(resolveDeadlineType(deadline));
             }
             default -> throw new IllegalArgumentException("알 수 없는 issueType: " + issueType);
