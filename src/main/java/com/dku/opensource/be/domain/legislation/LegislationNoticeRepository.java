@@ -14,6 +14,8 @@ public interface LegislationNoticeRepository extends JpaRepository<LegislationNo
 
     boolean existsByBillId(String billId);
 
+    java.util.List<LegislationNotice> findByContentIsNull();
+
     Optional<LegislationNotice> findByBillId(String billId);
 
     List<LegislationNotice> findByDeadlineBetween(LocalDate from, LocalDate to);

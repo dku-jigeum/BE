@@ -22,7 +22,7 @@ public class LegislationItemProcessor implements ItemProcessor<LegislationApiDto
         String title = dto.getBillName() != null ? dto.getBillName().trim() : "";
         LocalDate deadline = parseDate(dto.getNotiEdDt());
 
-        return LegislationNotice.of(dto.getBillId().trim(), dto.getBillNo().trim(), title, deadline);
+        return LegislationNotice.of(dto.getBillId().trim(), dto.getBillNo().trim(), title, deadline, null);
     }
 
     private LocalDate parseDate(String dateStr) {

@@ -27,6 +27,9 @@ public class LegislationNotice {
     @Column(nullable = false, length = 500)
     private String title;
 
+    @Column(columnDefinition = "TEXT")
+    private String content;
+
     private LocalDate deadline;
 
     @Column(columnDefinition = "vector(1536)", insertable = false, updatable = false)
@@ -35,12 +38,17 @@ public class LegislationNotice {
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
 
-    public static LegislationNotice of(String billId, String billNo, String title, LocalDate deadline) {
+    public void updateContent(String content) {
+        this.content = content;
+    }
+
+    public static LegislationNotice of(String billId, String billNo, String title, LocalDate deadline, String content) {
         LegislationNotice notice = new LegislationNotice();
         notice.billId = billId;
         notice.billNo = billNo;
         notice.title = title;
         notice.deadline = deadline;
+        notice.content = content;
         return notice;
     }
 }
