@@ -1,5 +1,6 @@
 package com.dku.opensource.be.api;
 
+import com.dku.opensource.be.agent.AgentChatService;
 import com.dku.opensource.be.agent.AgentService;
 import com.dku.opensource.be.common.ApiResponse;
 import lombok.RequiredArgsConstructor;
@@ -21,6 +22,7 @@ import java.util.List;
 public class AgentController {
 
     private final AgentService agentService;
+    private final AgentChatService agentChatService;
 
     @PostMapping("/analyze")
     public ApiResponse<AgentService.DetailPageAnalysisResponse> analyze(
@@ -35,6 +37,16 @@ public class AgentController {
 
         return ApiResponse.success(agentService.analyze(req.issueId(), req.issueType(), userId, rec));
     }
+
+    /** POST /api/agent/chat — 챗봇 Q&A (KAN-41). 자유 질문 → 검색 + 답변 생성 */
+    @PostMapping("/chat")
+    public ApiResponse<AgentChatService.ChatResponse> chat(
+            @AuthenticationPrincipal String userId,
+            @RequestBody ChatRequest req) {
+        return ApiResponse.success(agentChatService.chat(req.question(), userId));
+    }
+
+    record ChatRequest(String question) {}
 
     record AnalyzeRequest(
             String issueId,
