@@ -38,15 +38,23 @@ public class AgentController {
         return ApiResponse.success(agentService.analyze(req.issueId(), req.issueType(), userId, rec));
     }
 
-    /** POST /api/agent/chat — 챗봇 Q&A (KAN-41). 자유 질문 → 검색 + 답변 생성 */
+    /**
+     * POST /api/agent/chat — 챗봇 Q&A (KAN-41). 자유 질문 → 검색 + 답변 생성.
+     * 상세페이지에서 질문 시 issueId/issueType을 함께 전달하면 해당 이슈가 컨텍스트에 포함된다.
+     */
     @PostMapping("/chat")
     public ApiResponse<AgentChatService.ChatResponse> chat(
             @AuthenticationPrincipal String userId,
             @RequestBody ChatRequest req) {
-        return ApiResponse.success(agentChatService.chat(req.question(), userId));
+        return ApiResponse.success(agentChatService.chat(req.question(), req.issueId(), req.issueType(), userId));
     }
 
-    record ChatRequest(String question) {}
+    record ChatRequest(
+            String question,
+            // 현재 보고 있는 이슈 (optional — 상세페이지에서 질문 시만 전달)
+            String issueId,
+            String issueType
+    ) {}
 
     record AnalyzeRequest(
             String issueId,

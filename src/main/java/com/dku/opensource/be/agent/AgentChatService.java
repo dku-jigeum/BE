@@ -18,6 +18,9 @@ import java.util.Optional;
  *
  * 단일 턴 고정 파이프라인: search_issues → get_issue_detail(상위 2건) → 답변 생성.
  * 검색이 항상 필요하므로 Planner를 거치지 않는다.
+ *
+ * 상세페이지에서 질문한 경우 issueId/issueType이 함께 전달되며,
+ * 해당 이슈 본문을 "현재 보고 있는 이슈"로 프롬프트에 주입한다.
  */
 @Slf4j
 @Service
@@ -34,18 +37,21 @@ public class AgentChatService {
 
     public record SourceIssue(String id, String type, String title, String dDay) {}
 
-    public ChatResponse chat(String question, String userId) {
+    public ChatResponse chat(String question, String issueId, String issueType, String userId) {
         if (question == null || question.isBlank()) {
             throw new IllegalArgumentException("question은 필수입니다.");
         }
 
         AgentContext ctx = AgentContext.builder().userId(userId).build();
 
-        log.info("[Chat] 검색 시작 — user={}, question={}", userId, question);
+        // 현재 보고 있는 이슈 (상세페이지에서 질문한 경우)
+        String currentIssue = loadCurrentIssue(issueId, issueType, ctx);
+
+        log.info("[Chat] 검색 시작 — user={}, question={}, currentIssue={}", userId, question, currentIssue != null);
         String searchRaw = searchIssuesTool.run(question, ctx);
         List<SourceIssue> sources = parseSearchResults(searchRaw);
 
-        if (sources.isEmpty()) {
+        if (sources.isEmpty() && currentIssue == null) {
             log.info("[Chat] 검색 결과 없음 — 폴백 응답");
             return new ChatResponse("관련된 법안·청원·입법예고를 찾지 못했어요. 질문을 조금 더 구체적으로 바꿔보시겠어요?", List.of());
         }
@@ -55,16 +61,29 @@ public class AgentChatService {
             context.append(getIssueDetailTool.run(s.type() + ":" + s.id(), ctx)).append("\n\n");
         }
 
-        String answer = generateAnswer(question, context.toString(), sources);
+        String answer = generateAnswer(question, currentIssue, context.toString(), sources);
         log.info("[Chat] 답변 생성 완료 — sources={}", sources.size());
         return new ChatResponse(answer, sources);
     }
 
-    private String generateAnswer(String question, String context, List<SourceIssue> sources) {
+    /** issueId/issueType이 모두 있으면 현재 이슈 본문을 조회한다. 조회 실패 시 null. */
+    private String loadCurrentIssue(String issueId, String issueType, AgentContext ctx) {
+        if (issueId == null || issueId.isBlank() || issueType == null || issueType.isBlank()) {
+            return null;
+        }
+        String detail = getIssueDetailTool.run(issueType.toLowerCase() + ":" + issueId, ctx);
+        // 조회 실패 메시지는 프롬프트에 넣지 않는다
+        return detail.contains("TITLE:") ? detail : null;
+    }
+
+    private String generateAnswer(String question, String currentIssue, String context, List<SourceIssue> sources) {
         StringBuilder titles = new StringBuilder();
         sources.forEach(s -> titles.append(String.format("- [%s] %s (%s)%n", s.type(), s.title(), s.dDay())));
 
         String userPrompt = """
+                사용자가 현재 보고 있는 이슈:
+                %s
+
                 사용자 질문:
                 %s
 
@@ -72,7 +91,8 @@ public class AgentChatService {
                 %s
                 전체 관련 이슈 목록:
                 %s
-                위 자료를 근거로 사용자 질문에 답변하라.""".formatted(question, context, titles);
+                위 자료를 근거로 사용자 질문에 답변하라.""".formatted(
+                currentIssue != null ? currentIssue : "(없음)", question, context, titles);
 
         try {
             return exaoneClient.complete("""
@@ -80,6 +100,7 @@ public class AgentChatService {
 
                     절대 규칙:
                     - 제공된 자료에 있는 내용만 근거로 답한다. 자료에 없는 내용은 "자료에 없다"고 말한다.
+                    - "이 법안", "이 청원", "이 입법예고" 같은 표현은 '사용자가 현재 보고 있는 이슈'를 가리킨다.
                     - 법률적 결론을 단정하지 않는다.
                     - 한국어로 3~6문장 이내로 간결하게 답한다.""", userPrompt);
         } catch (Exception e) {
