@@ -14,6 +14,7 @@ import com.dku.opensource.be.domain.user.UserProfileRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -117,6 +118,18 @@ public class AgentService {
     public DetailPageAnalysisResponse analyze(
             String issueId, String issueType, String userId,
             RecommendationInput rec) {
+        return analyze(issueId, issueType, userId, rec, e -> {});
+    }
+
+    /**
+     * 분석 진행(도구 실행)을 listener로 흘려보내는 변형 (SSE 스트리밍용).
+     * 별도 스레드(Executor)에서 실행되므로 OSIV가 적용되지 않는다 →
+     * @Transactional로 세션을 열어 UserProfile.interestTags 등 지연 로딩을 보장한다.
+     */
+    @Transactional(readOnly = true)
+    public DetailPageAnalysisResponse analyze(
+            String issueId, String issueType, String userId,
+            RecommendationInput rec, java.util.function.Consumer<com.dku.opensource.be.agent.react.AgentEvent> listener) {
 
         AgentContext ctx = buildContext(issueId, issueType, userId, rec);
 
@@ -125,7 +138,7 @@ public class AgentService {
 
         List<String> orderedTools = sortByCanonicalOrder(plan.selectedTools());
         log.info("[Agent] 분석 시작 — orderedTools={}", orderedTools);
-        ReActResult result = reActLoop.runWithPlan(orderedTools, ctx);
+        ReActResult result = reActLoop.runWithPlan(orderedTools, ctx, listener);
         log.info("[Agent] 분석 완료 — calendarSuggested={}", result.isCalendarSuggested());
 
         return buildDetailResponse(result, ctx);
@@ -133,6 +146,9 @@ public class AgentService {
 
     // ─── Context 빌드 ────────────────────────────────────────
 
+    // @Transactional: Executor 스레드(챗봇/분석 SSE)에서 외부 호출돼도 UserProfile.interestTags
+    // 지연 로딩이 가능하도록 세션을 연다. (요청 스레드 호출은 OSIV로 이미 커버되나 무해)
+    @Transactional(readOnly = true)
     public AgentContext buildContext(String issueId, String issueType, String userId,
                                      RecommendationInput rec) {
         if (issueType == null || issueType.isBlank()) {

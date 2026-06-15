@@ -23,6 +23,7 @@ public class ReActResult {
     private String calendarDecisionRaw;       // decide_calendar_tool
     private String recommendedActionsRaw;     // recommend_user_action_tool
     private String missingProfileQuestionRaw; // ask_missing_profile_tool
+    private String searchIssuesRaw;           // search_issues (챗봇 sources 파싱용)
 
     /**
      * extract_key_dates 결과에 실제 등록 가능한 날짜가 있는지 확인.
