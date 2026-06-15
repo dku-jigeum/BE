@@ -1,5 +1,6 @@
 package com.dku.opensource.be.api;
 
+import com.dku.opensource.be.agent.AgentChatService;
 import com.dku.opensource.be.agent.AgentService;
 import com.dku.opensource.be.common.ApiResponse;
 import lombok.RequiredArgsConstructor;
@@ -21,6 +22,7 @@ import java.util.List;
 public class AgentController {
 
     private final AgentService agentService;
+    private final AgentChatService agentChatService;
 
     @PostMapping("/analyze")
     public ApiResponse<AgentService.DetailPageAnalysisResponse> analyze(
@@ -35,6 +37,28 @@ public class AgentController {
 
         return ApiResponse.success(agentService.analyze(req.issueId(), req.issueType(), userId, rec));
     }
+
+    /**
+     * POST /api/agent/chat — 챗봇 Q&A (KAN-41). 자유 질문 → 검색 + 답변 생성.
+     * 상세페이지에서 질문 시 issueId/issueType을 함께 전달하면 해당 이슈가 컨텍스트에 포함된다.
+     * history를 전달하면 이전 대화를 참고해 멀티턴으로 답한다.
+     */
+    @PostMapping("/chat")
+    public ApiResponse<AgentChatService.ChatResponse> chat(
+            @AuthenticationPrincipal String userId,
+            @RequestBody ChatRequest req) {
+        return ApiResponse.success(
+                agentChatService.chat(req.question(), req.issueId(), req.issueType(), userId, req.history()));
+    }
+
+    record ChatRequest(
+            String question,
+            // 현재 보고 있는 이슈 (optional — 상세페이지에서 질문 시만 전달)
+            String issueId,
+            String issueType,
+            // 이전 대화 (optional — 멀티턴 연속성)
+            List<AgentChatService.ChatTurn> history
+    ) {}
 
     record AnalyzeRequest(
             String issueId,
