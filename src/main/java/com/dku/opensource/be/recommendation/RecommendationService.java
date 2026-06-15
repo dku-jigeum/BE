@@ -123,6 +123,11 @@ public class RecommendationService {
         return mixed;
     }
 
+    /** 비로그인/홈 트렌딩 섹션용 — 프로필 없이 조회수·참여수 기반 트렌딩 Top-N. */
+    public List<RecommendedItem> getTrendingFeed(int limit) {
+        return buildTrendingFeed(limit);
+    }
+
     private List<RecommendedItem> buildTrendingFeed(int limit) {
         int each = Math.max(1, limit / 3);
         List<RecommendedItem> items = new ArrayList<>();

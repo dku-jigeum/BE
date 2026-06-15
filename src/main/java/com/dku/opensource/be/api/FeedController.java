@@ -24,6 +24,15 @@ public class FeedController {
                         .stream().map(FeedItem::from).toList());
     }
 
+    /** 홈 트렌딩 섹션 — 프로필/로그인 불필요. 조회수·참여수 기반 트렌딩 Top-N. */
+    @GetMapping("/trending")
+    public ApiResponse<List<FeedItem>> getTrending(
+            @RequestParam(defaultValue = "9") int limit) {
+        return ApiResponse.success(
+                recommendationService.getTrendingFeed(limit)
+                        .stream().map(FeedItem::from).toList());
+    }
+
     record FeedItem(String id, String type, String title, String content, String linkUrl,
                     String deadline, Integer participantCount, Integer viewCount, String source) {
         static FeedItem from(RecommendationService.RecommendedItem r) {
