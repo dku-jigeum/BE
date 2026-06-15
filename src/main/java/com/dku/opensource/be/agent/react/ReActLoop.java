@@ -14,6 +14,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 /**
@@ -38,6 +39,15 @@ public class ReActLoop {
             "search_issues", "get_issue_detail", "find_similar_events",
             "compare_with_similar_events", "register_calendar_event", "remove_calendar_event",
             "add_bookmark", "remove_bookmark", "recommend_for_me", "get_my_activity");
+
+    // "내 캘린더/북마크/활동 뭐 있어?" 류 질문 감지 — EXAONE이 get_my_activity 호출을 간헐 누락하므로
+    // 이 의도면 도구를 결정론적으로 미리 실행해 결과를 프롬프트에 주입한다(환각 "없음" 방지).
+    private static final Pattern SELF_POSSESSIVE = Pattern.compile("내|제|나의|저의|내가|제가|마이");
+    private static final Pattern SELF_ACTIVITY_TOPIC =
+            Pattern.compile("캘린더|일정|스케줄|북마크|관심\\s*이슈|활동|담은|등록한|저장한|찜한");
+    // 등록/삭제 등 "행동" 요청은 사전조회 대상에서 제외(조회가 아니라 도구 실행이 목적).
+    private static final Pattern SELF_ACTIVITY_ACTION =
+            Pattern.compile("등록\\s*(해|하|할|시)|담아|추가\\s*(해|하)|빼줘|빼고|삭제|제거|지워|취소");
 
     @Value("${agent.react.max-iterations:6}")
     private int maxIterations;
@@ -118,11 +128,30 @@ public class ReActLoop {
                     + "\n도구 입력 전용 식별자: " + ctx.getIssueType() + ":" + ctx.getIssueId()
                     + " (이 식별자는 Action Input에만 쓰고, Final Answer에는 절대 쓰지 마세요)"
                 : "";
+        // "내 캘린더/북마크/활동 뭐 있어?" 의도면 get_my_activity를 미리 실행해 결과를 주입한다.
+        // EXAONE(7.8B)이 이 도구 호출을 간헐 누락해 "없다"고 환각하는 문제를 결정론적으로 차단.
+        String activityContext = "";
+        if (isSelfActivityQuestion(question)) {
+            AgentTool activityTool = toolMap.get("get_my_activity");
+            if (activityTool != null) {
+                String data = activityTool.run("", ctx);
+                activityContext = "\n\n[내부 참고 — 사용자의 활동 데이터(북마크/캘린더)."
+                        + " 이 데이터만 근거로 답하고, 없는 항목을 지어내지 마세요. CALENDAR가 (없음)이면 등록된 일정이 없다고 안내하세요]\n"
+                        + data;
+            }
+        }
         String goal = "이전 대화:\n" + (historyText == null || historyText.isBlank() ? "(없음)" : historyText)
-                + "\n\n사용자 질문: " + question + currentIssue + "\n\n";
+                + "\n\n사용자 질문: " + question + currentIssue + activityContext + "\n\n";
         return runCore(buildChatSystemPrompt(), goal, ctx, maxIterations,
                 "죄송해요, 답변을 정리하지 못했어요. 질문을 조금 더 구체적으로 해주시겠어요?",
                 new LinkedHashSet<>(CHAT_TOOLS), listener);
+    }
+
+    /** "내 캘린더/북마크/활동 조회" 의도인지 — 행동(등록/삭제) 요청은 제외. */
+    private boolean isSelfActivityQuestion(String q) {
+        if (q == null || q.isBlank()) return false;
+        if (SELF_ACTIVITY_ACTION.matcher(q).find()) return false;
+        return SELF_POSSESSIVE.matcher(q).find() && SELF_ACTIVITY_TOPIC.matcher(q).find();
     }
 
     /**
